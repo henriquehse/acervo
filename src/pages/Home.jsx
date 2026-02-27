@@ -104,7 +104,7 @@ export default function Home() {
                             <p className="home__card-title">{item.title}</p>
                             <p className="home__card-meta">{item.author}</p>
                             <p className="home__card-duration">
-                                {item.duration ? formatDuration(item.duration) : 'Drive File'}
+                                {item.duration ? formatDuration(item.duration) : 'Áudio do Drive'}
                             </p>
                         </div>
                     ))}
@@ -123,8 +123,12 @@ export default function Home() {
                             <BookCover item={item} size="md" />
                             <p className="home__card-title">{item.title}</p>
                             <p className="home__card-meta">{item.author}</p>
-                            <p className="home__card-duration">
-                                {item.pages ? `${item.pages} páginas` : 'Drive File'}
+                            <p className="home__card-duration" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {item.pages ? `${item.pages} páginas` : (
+                                    <>
+                                        Abrir Documento ↗
+                                    </>
+                                )}
                             </p>
                         </div>
                     ))}

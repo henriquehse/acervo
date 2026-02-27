@@ -86,6 +86,18 @@ export const PlayerProvider = ({ children }) => {
     }, [sleepTimer])
 
     const playItem = useCallback((item) => {
+        // If it's a non-audio item, just open it in a new tab and return early
+        if (item.type === 'ebook' || item.type === 'video-summary' || item.type === 'finance' || item.type === 'other') {
+            const link = item.webViewLink || (item.driveId ? `https://drive.google.com/file/d/${item.driveId}/view` : null)
+            if (link) {
+                window.open(link, '_blank', 'noopener,noreferrer')
+            } else if (item.src) {
+                window.open(item.src, '_blank', 'noopener,noreferrer')
+            }
+            return
+        }
+
+        // It is an audiobook
         let src = item.audioUrl || item.src
 
         // If it's a Drive file, construct the authenticated URL
@@ -107,14 +119,6 @@ export const PlayerProvider = ({ children }) => {
                     album: 'Biblioteca Digital',
                     artwork: item.thumbnail ? [{ src: item.thumbnail, sizes: '96x96', type: 'image/png' }] : []
                 })
-            }
-        } else if (item.type === 'ebook' || item.type === 'video-summary' || item.type === 'finance') {
-            // For non-audio items, we just set the current item and let the UI handle it (e.g. open PDF)
-            setCurrentItem(item)
-            setIsFullPlayer(true)
-            if (item.type === 'video-summary' || item.type === 'finance') {
-                // Open in new tab for now as a quick solution
-                window.open(item.webViewLink || `https://drive.google.com/file/d/${item.driveId}/view`, '_blank')
             }
         }
     }, [token])

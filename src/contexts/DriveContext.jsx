@@ -56,18 +56,35 @@ export const DriveProvider = ({ children }) => {
                 let type = 'other'
                 let color = 'linear-gradient(135deg, #6b7280 0%, #374151 100%)'
 
-                if (file.parents?.includes(FOLDERS.AUDIOBOOKS)) {
+                const isAudio = file.mimeType?.startsWith('audio/')
+                const isVideo = file.mimeType?.startsWith('video/')
+                const isPdfOrEpub = file.mimeType === 'application/pdf' || file.mimeType === 'application/epub+zip'
+
+                // Smart classification based on mimeType first, then folder
+                if (isAudio) {
                     type = 'audiobook'
                     color = 'linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)'
-                } else if (file.parents?.includes(FOLDERS.EBOOKS)) {
-                    type = 'ebook'
-                    color = 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)'
-                } else if (file.parents?.includes(FOLDERS.VIDEOS)) {
+                } else if (isVideo) {
                     type = 'video-summary'
                     color = 'linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)'
-                } else if (file.parents?.includes(FOLDERS.FINANCE)) {
-                    type = 'finance'
-                    color = 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                } else if (isPdfOrEpub) {
+                    type = 'ebook'
+                    color = 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)'
+                } else {
+                    // Fallback to folder-based classification for unknown types 
+                    // (mostly for the Finance folder which might have docs/sheets)
+                    if (file.parents?.includes(FOLDERS.FINANCE)) {
+                        type = 'finance'
+                        color = 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    } else if (file.parents?.includes(FOLDERS.AUDIOBOOKS)) {
+                        type = 'other' // If it's in audio folder but not audio, mark as other to avoid player crash
+                    } else if (file.parents?.includes(FOLDERS.EBOOKS)) {
+                        type = 'ebook'
+                        color = 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)'
+                    } else if (file.parents?.includes(FOLDERS.VIDEOS)) {
+                        type = 'video-summary'
+                        color = 'linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)'
+                    }
                 }
 
                 return {
@@ -78,6 +95,7 @@ export const DriveProvider = ({ children }) => {
                     type,
                     driveId: file.id,
                     thumbnail: file.thumbnailLink,
+                    webViewLink: file.webViewLink,
                     modifiedTime: file.modifiedTime,
                     coverGradient: color,
                     mimeType: file.mimeType
