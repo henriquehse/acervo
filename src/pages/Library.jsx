@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { usePlayer } from '../contexts/PlayerContext'
+import { useDrive } from '../contexts/DriveContext'
 import { ALL_ITEMS } from '../utils/data'
 import { formatDuration, getProgressPercent } from '../utils/helpers'
 import BookCover from '../components/BookCover'
@@ -8,12 +9,14 @@ import './Library.css'
 
 export default function Library() {
     const { playItem } = usePlayer()
+    const { driveItems, isConnected } = useDrive()
     const [viewMode, setViewMode] = useState('grid') // grid, list
     const [sortBy, setSortBy] = useState('title') // title, author, recent
     const [filterType, setFilterType] = useState('all')
 
     const items = useMemo(() => {
-        let result = [...ALL_ITEMS]
+        const allItems = isConnected ? [...driveItems, ...ALL_ITEMS] : [...ALL_ITEMS]
+        let result = [...allItems]
         if (filterType !== 'all') {
             result = result.filter(i => i.type === filterType)
         }
@@ -23,7 +26,7 @@ export default function Library() {
             result.sort((a, b) => a.author.localeCompare(b.author))
         }
         return result
-    }, [sortBy, filterType])
+    }, [sortBy, filterType, driveItems, isConnected])
 
     return (
         <div className="library" id="library-page">
@@ -54,6 +57,8 @@ export default function Library() {
                         { key: 'all', label: 'Todos' },
                         { key: 'audiobook', label: 'Audiobooks' },
                         { key: 'ebook', label: 'E-books' },
+                        { key: 'video-summary', label: 'Vídeos' },
+                        { key: 'finance', label: 'Financeiro' },
                     ].map(({ key, label }) => (
                         <button
                             key={key}

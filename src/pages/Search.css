@@ -118,7 +118,7 @@
 .search__cat-pill--active {
     color: var(--accent-primary-light);
     border-color: var(--accent-primary);
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--accent-glow);
 }
 
 /* Results */

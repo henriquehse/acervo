@@ -112,17 +112,17 @@
 }
 
 .profile__stat-icon--purple {
-    background: rgba(139, 92, 246, 0.15);
-    color: var(--accent-primary-light);
+    background: var(--accent-glow);
+    color: var(--accent-primary);
 }
 
 .profile__stat-icon--cyan {
-    background: rgba(6, 182, 212, 0.15);
+    background: var(--accent-glow-cyan);
     color: var(--accent-secondary);
 }
 
 .profile__stat-icon--amber {
-    background: rgba(245, 158, 11, 0.15);
+    background: rgba(219, 123, 0, 0.15);
     color: var(--warning);
 }
 
