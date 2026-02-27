@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react'
 import { SPEED_OPTIONS } from '../utils/data'
+import { useDrive } from './DriveContext'
 
 const PlayerContext = createContext(null)
 
@@ -10,6 +11,7 @@ export const usePlayer = () => {
 }
 
 export const PlayerProvider = ({ children }) => {
+    const { token } = useDrive()
     const [currentItem, setCurrentItem] = useState(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
@@ -20,43 +22,57 @@ export const PlayerProvider = ({ children }) => {
     const [isFullPlayer, setIsFullPlayer] = useState(false)
     const [sleepTimer, setSleepTimer] = useState(null)
     const [currentChapter, setCurrentChapter] = useState(null)
-    const [queue, setQueue] = useState([])
-    const [isShuffled, setIsShuffled] = useState(false)
-    const [repeatMode, setRepeatMode] = useState('off') // off, one, all
+    const [repeatMode, setRepeatMode] = useState('off')
     const [bookmarks, setBookmarks] = useState([])
 
-    const audioRef = useRef(null)
-    const progressInterval = useRef(null)
+    const audioRef = useRef(new Audio())
     const sleepTimerRef = useRef(null)
 
-    // Simulate audio playback with interval
+    // Sync state with audio element
     useEffect(() => {
-        if (isPlaying && currentItem?.type === 'audiobook') {
-            progressInterval.current = setInterval(() => {
-                setCurrentTime(prev => {
-                    const next = prev + (speed * 0.1)
-                    if (next >= duration) {
-                        setIsPlaying(false)
-                        return duration
-                    }
-                    return next
-                })
-            }, 100)
-        }
-        return () => clearInterval(progressInterval.current)
-    }, [isPlaying, speed, duration, currentItem])
+        const audio = audioRef.current
 
-    // Update current chapter based on time
-    useEffect(() => {
-        if (currentItem?.chapters) {
-            const chapter = currentItem.chapters.find(
-                ch => currentTime >= ch.start && currentTime < ch.end
-            )
-            if (chapter && chapter.id !== currentChapter?.id) {
-                setCurrentChapter(chapter)
+        const updateTime = () => setCurrentTime(audio.currentTime)
+        const updateDuration = () => setDuration(audio.duration)
+        const handleEnded = () => {
+            if (repeatMode === 'one') {
+                audio.currentTime = 0
+                audio.play()
+            } else {
+                setIsPlaying(false)
             }
         }
-    }, [currentTime, currentItem, currentChapter])
+
+        audio.addEventListener('timeupdate', updateTime)
+        audio.addEventListener('loadedmetadata', updateDuration)
+        audio.addEventListener('ended', handleEnded)
+
+        return () => {
+            audio.removeEventListener('timeupdate', updateTime)
+            audio.removeEventListener('loadedmetadata', updateDuration)
+            audio.removeEventListener('ended', handleEnded)
+        }
+    }, [repeatMode])
+
+    // Handle play/pause
+    useEffect(() => {
+        if (isPlaying) {
+            audioRef.current.play().catch(e => console.error("Playback error:", e))
+        } else {
+            audioRef.current.pause()
+        }
+    }, [isPlaying])
+
+    // Handle speed
+    useEffect(() => {
+        audioRef.current.playbackRate = speed
+    }, [speed])
+
+    // Handle volume
+    useEffect(() => {
+        audioRef.current.volume = volume
+        audioRef.current.muted = isMuted
+    }, [volume, isMuted])
 
     // Sleep timer
     useEffect(() => {
@@ -70,36 +86,42 @@ export const PlayerProvider = ({ children }) => {
     }, [sleepTimer])
 
     const playItem = useCallback((item) => {
-        setCurrentItem(item)
-        setCurrentTime(item.currentTime || 0)
-        setDuration(item.duration || 0)
-        setIsPlaying(true)
-        setCurrentChapter(item.chapters?.[0] || null)
+        let src = item.audioUrl || item.src
 
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: item.title,
-                artist: item.author,
-                album: 'Acervo',
-            })
-            navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true))
-            navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false))
-            navigator.mediaSession.setActionHandler('seekbackward', () => seekRelative(-30))
-            navigator.mediaSession.setActionHandler('seekforward', () => seekRelative(30))
+        // If it's a Drive file, construct the authenticated URL
+        if (item.driveId && token) {
+            src = `https://www.googleapis.com/drive/v3/files/${item.driveId}?alt=media&access_token=${token}`
         }
-    }, [])
 
-    const togglePlay = useCallback(() => {
-        setIsPlaying(prev => !prev)
-    }, [])
+        if (src) {
+            audioRef.current.src = src
+            audioRef.current.load()
+            setCurrentItem(item)
+            setIsPlaying(true)
+            setIsFullPlayer(true)
 
-    const seekTo = useCallback((time) => {
-        setCurrentTime(Math.max(0, Math.min(time, duration)))
-    }, [duration])
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: item.title,
+                    artist: item.author || 'Acervo',
+                    album: 'Biblioteca Digital',
+                    artwork: item.thumbnail ? [{ src: item.thumbnail, sizes: '96x96', type: 'image/png' }] : []
+                })
+            }
+        } else if (item.type === 'ebook' || item.type === 'video-summary' || item.type === 'finance') {
+            // For non-audio items, we just set the current item and let the UI handle it (e.g. open PDF)
+            setCurrentItem(item)
+            setIsFullPlayer(true)
+            if (item.type === 'video-summary' || item.type === 'finance') {
+                // Open in new tab for now as a quick solution
+                window.open(item.webViewLink || `https://drive.google.com/file/d/${item.driveId}/view`, '_blank')
+            }
+        }
+    }, [token])
 
-    const seekRelative = useCallback((delta) => {
-        setCurrentTime(prev => Math.max(0, Math.min(prev + delta, duration)))
-    }, [duration])
+    const togglePlay = useCallback(() => setIsPlaying(prev => !prev), [])
+    const seekTo = useCallback((time) => { audioRef.current.currentTime = time }, [])
+    const seekRelative = useCallback((delta) => { audioRef.current.currentTime += delta }, [])
 
     const cycleSpeed = useCallback(() => {
         setSpeed(prev => {
@@ -108,39 +130,8 @@ export const PlayerProvider = ({ children }) => {
         })
     }, [])
 
-    const setPlaybackSpeed = useCallback((s) => {
-        setSpeed(s)
-    }, [])
-
-    const toggleMute = useCallback(() => {
-        setIsMuted(prev => !prev)
-    }, [])
-
-    const skipToChapter = useCallback((chapter) => {
-        setCurrentTime(chapter.start)
-        setCurrentChapter(chapter)
-    }, [])
-
-    const skipForward = useCallback(() => {
-        if (currentItem?.chapters && currentChapter) {
-            const idx = currentItem.chapters.findIndex(ch => ch.id === currentChapter.id)
-            if (idx < currentItem.chapters.length - 1) {
-                skipToChapter(currentItem.chapters[idx + 1])
-            }
-        }
-    }, [currentItem, currentChapter, skipToChapter])
-
-    const skipBackward = useCallback(() => {
-        if (currentItem?.chapters && currentChapter) {
-            const idx = currentItem.chapters.findIndex(ch => ch.id === currentChapter.id)
-            if (currentTime - currentChapter.start > 3) {
-                seekTo(currentChapter.start)
-            } else if (idx > 0) {
-                skipToChapter(currentItem.chapters[idx - 1])
-            }
-        }
-    }, [currentItem, currentChapter, currentTime, seekTo, skipToChapter])
-
+    const setPlaybackSpeed = useCallback((s) => setSpeed(s), [])
+    const toggleMute = useCallback(() => setIsMuted(prev => !prev), [])
     const addBookmark = useCallback(() => {
         if (!currentItem) return
         const bm = {
@@ -153,10 +144,6 @@ export const PlayerProvider = ({ children }) => {
         setBookmarks(prev => [...prev, bm])
         return bm
     }, [currentItem, currentTime, currentChapter])
-
-    const removeBookmark = useCallback((id) => {
-        setBookmarks(prev => prev.filter(b => b.id !== id))
-    }, [])
 
     const toggleRepeat = useCallback(() => {
         setRepeatMode(prev => {
@@ -177,8 +164,6 @@ export const PlayerProvider = ({ children }) => {
         isFullPlayer,
         sleepTimer,
         currentChapter,
-        queue,
-        isShuffled,
         repeatMode,
         bookmarks,
         playItem,
@@ -191,14 +176,9 @@ export const PlayerProvider = ({ children }) => {
         toggleMute,
         setIsFullPlayer,
         setSleepTimer,
-        skipToChapter,
-        skipForward,
-        skipBackward,
         addBookmark,
-        removeBookmark,
         toggleRepeat,
-        setIsShuffled,
-        setQueue,
+        setBookmarks,
     }
 
     return (
