@@ -116,7 +116,7 @@ export const DriveProvider = ({ children }) => {
     }, [token, fetchDriveFiles])
 
     return (
-        <DriveContext.Provider value={{ login, logout, driveItems, isLoading, isConnected: !!token }}>
+        <DriveContext.Provider value={{ login, logout, driveItems, isLoading, isConnected: !!token, token }}>
             {children}
         </DriveContext.Provider>
     )
