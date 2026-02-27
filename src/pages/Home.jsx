@@ -20,7 +20,20 @@ export default function Home() {
         return [...driveEbooks, ...DEMO_EBOOKS]
     }, [driveItems, isConnected])
 
-    const totalItems = useMemo(() => [...audiobooks, ...ebooks], [audiobooks, ebooks])
+    const videoSummaries = useMemo(() => {
+        return isConnected ? driveItems.filter(i => i.type === 'video-summary') : []
+    }, [driveItems, isConnected])
+
+    const financeItems = useMemo(() => {
+        return isConnected ? driveItems.filter(i => i.type === 'finance') : []
+    }, [driveItems, isConnected])
+
+    const totalItems = useMemo(() => [
+        ...audiobooks,
+        ...ebooks,
+        ...videoSummaries,
+        ...financeItems
+    ], [audiobooks, ebooks, videoSummaries, financeItems])
 
     const continueListening = useMemo(() => {
         return ALL_ITEMS.filter(item => item.currentTime > 0)
@@ -117,6 +130,44 @@ export default function Home() {
                     ))}
                 </div>
             </section>
+
+            {/* Video Summaries */}
+            {videoSummaries.length > 0 && (
+                <section className="home__section animate-slideUp" style={{ animationDelay: '300ms' }}>
+                    <h2 className="home__section-title">
+                        📹 Video Resumos
+                        <span className="home__section-count">{videoSummaries.length}</span>
+                    </h2>
+                    <div className="home__scroll-row">
+                        {videoSummaries.map(item => (
+                            <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`video-${item.id}`}>
+                                <BookCover item={item} size="md" />
+                                <p className="home__card-title">{item.title}</p>
+                                <p className="home__card-meta">Resumo em Vídeo</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* Finance Items */}
+            {financeItems.length > 0 && (
+                <section className="home__section animate-slideUp" style={{ animationDelay: '400ms' }}>
+                    <h2 className="home__section-title">
+                        💰 Financeiro
+                        <span className="home__section-count">{financeItems.length}</span>
+                    </h2>
+                    <div className="home__scroll-row">
+                        {financeItems.map(item => (
+                            <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`finance-${item.id}`}>
+                                <BookCover item={item} size="md" />
+                                <p className="home__card-title">{item.title}</p>
+                                <p className="home__card-meta">Documento</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Categories */}
             <section className="home__section animate-slideUp" style={{ animationDelay: '300ms' }}>

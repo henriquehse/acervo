@@ -36,27 +36,51 @@ export const DriveProvider = ({ children }) => {
         if (!token) return
         setIsLoading(true)
         try {
-            // Query for shared files shared around yesterday
-            // MIME types: audio (mp3, m4a, etc), pdf, epub
-            const query = "sharedWithMe = true and (mimeType contains 'audio/' or mimeType = 'application/pdf' or mimeType = 'application/epub+zip')"
+            const FOLDERS = {
+                AUDIOBOOKS: '1-6gsrxIJVE9k4eEBVSWEnloFKZQ56_ap',
+                EBOOKS: '1KgyMW0W9e_7PqYn51o36FgW-hXH54AGU',
+                VIDEOS: '15j1UHlL6rOyg93PjdBFsSfoXaop7hlDv',
+                FINANCE: '1egQtgh8iZtjOG-N67QPb6yObqbUzc0hn'
+            }
+
+            // We fetch all files that are inside these specific folders
+            const query = `('${FOLDERS.AUDIOBOOKS}' in parents or '${FOLDERS.EBOOKS}' in parents or '${FOLDERS.VIDEOS}' in parents or '${FOLDERS.FINANCE}' in parents) and trashed = false`
             const response = await axios.get(
-                `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name, mimeType, modifiedTime, thumbnailLink, webViewLink, iconLink)`,
+                `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name, mimeType, modifiedTime, thumbnailLink, webViewLink, iconLink, parents)&pageSize=1000`,
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
             )
 
             const mappedItems = response.data.files.map(file => {
-                const isAudio = file.mimeType.includes('audio')
+                let type = 'other'
+                let color = 'linear-gradient(135deg, #6b7280 0%, #374151 100%)'
+
+                if (file.parents?.includes(FOLDERS.AUDIOBOOKS)) {
+                    type = 'audiobook'
+                    color = 'linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)'
+                } else if (file.parents?.includes(FOLDERS.EBOOKS)) {
+                    type = 'ebook'
+                    color = 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)'
+                } else if (file.parents?.includes(FOLDERS.VIDEOS)) {
+                    type = 'video-summary'
+                    color = 'linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)'
+                } else if (file.parents?.includes(FOLDERS.FINANCE)) {
+                    type = 'finance'
+                    color = 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                }
+
                 return {
                     id: file.id,
-                    title: file.name,
+                    title: file.name.replace(/\.[^/.]+$/, ""), // remove extension
+                    filename: file.name,
                     author: 'Drive User',
-                    type: isAudio ? 'audiobook' : 'ebook',
+                    type,
                     driveId: file.id,
                     thumbnail: file.thumbnailLink,
                     modifiedTime: file.modifiedTime,
-                    coverGradient: isAudio ? 'linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)' : 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)'
+                    coverGradient: color,
+                    mimeType: file.mimeType
                 }
             })
 
