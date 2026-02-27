@@ -1,16 +1,18 @@
 import { usePlayer } from '../contexts/PlayerContext'
+import { useDrive } from '../contexts/DriveContext'
 import { ALL_ITEMS } from '../utils/data'
 import { formatTime } from '../utils/helpers'
-import { LogOut, Settings, Bell, HelpCircle, Bookmark, Clock, ChevronRight, Headphones, BookOpen, Zap } from 'lucide-react'
+import { LogOut, Settings, Bell, HelpCircle, Bookmark, Clock, ChevronRight, Headphones, BookOpen, Zap, Database } from 'lucide-react'
 import './Profile.css'
 
 export default function Profile() {
     const { bookmarks } = usePlayer()
+    const { login, logout, isConnected, driveItems } = useDrive()
 
     const stats = {
-        total: ALL_ITEMS.length,
-        audiobooks: ALL_ITEMS.filter(i => i.type === 'audiobook').length,
-        ebooks: ALL_ITEMS.filter(i => i.type === 'ebook').length,
+        total: ALL_ITEMS.length + (isConnected ? driveItems.length : 0),
+        audiobooks: ALL_ITEMS.filter(i => i.type === 'audiobook').length + (isConnected ? driveItems.filter(i => i.type === 'audiobook').length : 0),
+        ebooks: ALL_ITEMS.filter(i => i.type === 'ebook').length + (isConnected ? driveItems.filter(i => i.type === 'ebook').length : 0),
         listening: ALL_ITEMS.filter(i => i.currentTime > 0).length,
     }
 
@@ -29,6 +31,17 @@ export default function Profile() {
                     <h2 className="profile__user-name">Henrique Santos</h2>
                     <p className="profile__user-email">henriquehse2015@gmail.com</p>
                 </div>
+                {!isConnected ? (
+                    <button className="profile__connect-btn" onClick={() => login()}>
+                        <Database size={16} />
+                        <span>Conectar Drive</span>
+                    </button>
+                ) : (
+                    <button className="profile__connect-btn profile__connect-btn--active" onClick={() => logout()}>
+                        <Database size={16} />
+                        <span>Drive Conectado</span>
+                    </button>
+                )}
             </div>
 
             {/* Stats */}

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { usePlayer } from '../contexts/PlayerContext'
+import { useDrive } from '../contexts/DriveContext'
 import { DEMO_AUDIOBOOKS, DEMO_EBOOKS, ALL_ITEMS } from '../utils/data'
 import { getProgressPercent, formatDuration } from '../utils/helpers'
 import BookCover from '../components/BookCover'
@@ -7,13 +8,22 @@ import './Home.css'
 
 export default function Home() {
     const { playItem, currentItem } = usePlayer()
+    const { driveItems, isConnected } = useDrive()
+
+    const audiobooks = useMemo(() => {
+        const driveAudiobooks = isConnected ? driveItems.filter(i => i.type === 'audiobook') : []
+        return [...driveAudiobooks, ...DEMO_AUDIOBOOKS]
+    }, [driveItems, isConnected])
+
+    const ebooks = useMemo(() => {
+        const driveEbooks = isConnected ? driveItems.filter(i => i.type === 'ebook') : []
+        return [...driveEbooks, ...DEMO_EBOOKS]
+    }, [driveItems, isConnected])
+
+    const totalItems = useMemo(() => [...audiobooks, ...ebooks], [audiobooks, ebooks])
 
     const continueListening = useMemo(() => {
         return ALL_ITEMS.filter(item => item.currentTime > 0)
-    }, [])
-
-    const recentlyAdded = useMemo(() => {
-        return [...ALL_ITEMS].slice(0, 6)
     }, [])
 
     const greeting = useMemo(() => {
@@ -72,15 +82,17 @@ export default function Home() {
             <section className="home__section animate-slideUp" style={{ animationDelay: '100ms' }}>
                 <h2 className="home__section-title">
                     🎧 Audiobooks
-                    <span className="home__section-count">{DEMO_AUDIOBOOKS.length}</span>
+                    <span className="home__section-count">{audiobooks.length}</span>
                 </h2>
                 <div className="home__scroll-row">
-                    {DEMO_AUDIOBOOKS.map(item => (
+                    {audiobooks.map(item => (
                         <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`audiobook-${item.id}`}>
                             <BookCover item={item} size="md" />
                             <p className="home__card-title">{item.title}</p>
                             <p className="home__card-meta">{item.author}</p>
-                            <p className="home__card-duration">{formatDuration(item.duration)}</p>
+                            <p className="home__card-duration">
+                                {item.duration ? formatDuration(item.duration) : 'Drive File'}
+                            </p>
                         </div>
                     ))}
                 </div>
@@ -90,15 +102,17 @@ export default function Home() {
             <section className="home__section animate-slideUp" style={{ animationDelay: '200ms' }}>
                 <h2 className="home__section-title">
                     📖 E-books
-                    <span className="home__section-count">{DEMO_EBOOKS.length}</span>
+                    <span className="home__section-count">{ebooks.length}</span>
                 </h2>
                 <div className="home__scroll-row">
-                    {DEMO_EBOOKS.map(item => (
+                    {ebooks.map(item => (
                         <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`ebook-${item.id}`}>
                             <BookCover item={item} size="md" />
                             <p className="home__card-title">{item.title}</p>
                             <p className="home__card-meta">{item.author}</p>
-                            <p className="home__card-duration">{item.pages} páginas</p>
+                            <p className="home__card-duration">
+                                {item.pages ? `${item.pages} páginas` : 'Drive File'}
+                            </p>
                         </div>
                     ))}
                 </div>

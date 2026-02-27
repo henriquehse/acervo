@@ -25,6 +25,38 @@
     margin-bottom: var(--space-xl);
 }
 
+.profile__connect-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-glass-light);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    transition: all var(--transition-normal);
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.profile__connect-btn:hover {
+    background: var(--bg-glass);
+    transform: translateY(-2px);
+    border-color: var(--accent-primary-light);
+}
+
+.profile__connect-btn--active {
+    background: var(--accent-gradient);
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.profile__connect-btn--active span {
+    color: white;
+}
+
 .profile__avatar {
     width: 56px;
     height: 56px;
