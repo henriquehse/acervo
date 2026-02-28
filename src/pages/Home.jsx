@@ -1,54 +1,102 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useDrive } from '../contexts/DriveContext'
-import { DEMO_AUDIOBOOKS, DEMO_EBOOKS, ALL_ITEMS } from '../utils/data'
-import { getProgressPercent, formatDuration } from '../utils/helpers'
-import { CloudOff, Database, RefreshCw, Loader2, PlayCircle, BookOpen } from 'lucide-react'
+import { formatDuration } from '../utils/helpers'
+import {
+    CloudOff, Database, RefreshCw, Loader2, PlayCircle,
+    BookOpen, Video, DollarSign, ChevronRight, ChevronLeft
+} from 'lucide-react'
 
-function BookCover({ item, className }) {
-    if (item.thumbnail) {
-        return (
-            <img
-                src={item.thumbnail}
-                alt={item.title}
-                className={`object-cover rounded-md shadow-sm aspect-square ${className}`}
-            />
-        )
-    }
-    return (
-        <div
-            className={`flex items-center justify-center rounded-md shadow-sm aspect-square text-white font-bold p-2 text-center text-xs ${className}`}
-            style={{ background: item.coverGradient || 'linear-gradient(to right, #9333ea, #3b82f6)' }}
-        >
-            {item.title.substring(0, 20)}
-        </div>
-    )
-}
-
+// Elegant Item Card
 function ItemCard({ item, onPlay }) {
     const subtitle = useMemo(() => {
         if (item.type === 'audiobook') return item.duration ? formatDuration(item.duration) : '🎧 Áudio'
-        if (item.type === 'ebook') return item.pages ? `${item.pages} páginas` : '📖 Abrir'
+        if (item.type === 'ebook') return item.pages ? `${item.pages} pág.` : '📖 Ler'
         if (item.type === 'video-summary') return '📹 Vídeo'
-        if (item.type === 'finance') return '📊 Doc'
-        return ''
+        if (item.type === 'finance') return '� Finanças'
+        return '📁 Arquivo'
     }, [item])
 
     return (
         <button
             onClick={() => onPlay(item)}
-            className="group flex-shrink-0 w-36 sm:w-40 flex flex-col items-start gap-2 text-left hover:opacity-90 transition-opacity focus:outline-none"
+            className="group flex-shrink-0 w-32 sm:w-44 flex flex-col items-start gap-2.5 text-left transition-transform active:scale-95 focus:outline-none snap-start"
         >
-            <BookCover item={item} className="w-full h-36 sm:h-40" />
-            <div className="w-full">
-                <h3 className="text-sm font-semibold truncate text-foreground w-full">{item.title}</h3>
-                <p className="text-xs text-muted-foreground truncate w-full">{item.author}</p>
-                <div className="flex items-center gap-1 mt-1 text-[10px] sm:text-xs font-medium text-primary">
-                    {item.type === 'audiobook' ? <PlayCircle size={12} /> : <BookOpen size={12} />}
-                    {subtitle}
+            <div className="relative w-full aspect-[3/4] sm:aspect-square rounded-xl overflow-hidden shadow-md group-hover:shadow-xl transition-all border border-black/5 bg-white">
+                {item.thumbnail ? (
+                    <img
+                        src={item.thumbnail}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        loading="lazy"
+                    />
+                ) : (
+                    <div
+                        className="w-full h-full flex flex-col items-center justify-center p-4 text-white text-center text-[10px] sm:text-xs font-bold leading-tight"
+                        style={{ background: item.coverGradient }}
+                    >
+                        <div className="opacity-20 mb-2">
+                            {item.type === 'audiobook' && <PlayCircle size={32} />}
+                            {item.type === 'ebook' && <BookOpen size={32} />}
+                            {item.type === 'video-summary' && <Video size={32} />}
+                            {item.type === 'finance' && <DollarSign size={32} />}
+                        </div>
+                        <span className="line-clamp-3">{item.title}</span>
+                    </div>
+                )}
+                {/* Glass Overlay on Hover */}
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
+                        {item.type === 'audiobook' ? <PlayCircle size={20} /> : <BookOpen size={20} />}
+                    </div>
                 </div>
             </div>
+            <div className="w-full flex flex-col gap-0.5">
+                <h3 className="text-xs sm:text-sm font-bold truncate text-foreground leading-snug">{item.title}</h3>
+                <span className="text-[10px] sm:text-xs font-semibold text-primary/80 uppercase tracking-tighter">
+                    {subtitle}
+                </span>
+            </div>
         </button>
+    )
+}
+
+// Fluid Carousel with scroll buttons
+function SectionCarousel({ title, items, onPlay, icon: Icon }) {
+    const scrollRef = useRef(null)
+
+    const scroll = (dir) => {
+        if (!scrollRef.current) return
+        const amt = dir === 'left' ? -300 : 300
+        scrollRef.current.scrollBy({ left: amt, behavior: 'smooth' })
+    }
+
+    if (!items || items.length === 0) return null
+
+    return (
+        <section className="mb-12 group/sec relative">
+            <div className="flex items-center justify-between mb-5 px-1">
+                <div className="flex items-center gap-2.5">
+                    {Icon && <div className="p-2 bg-primary/10 rounded-lg text-primary"><Icon size={18} strokeWidth={2.5} /></div>}
+                    <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">{title}</h2>
+                    <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded-full text-muted-foreground opacity-70">
+                        {items.length}
+                    </span>
+                </div>
+
+                <div className="flex gap-2 opacity-0 group-hover/sec:opacity-100 transition-opacity hidden sm:flex">
+                    <button onClick={() => scroll('left')} className="p-1.5 bg-white border border-border rounded-full hover:bg-muted transition shadow-sm"><ChevronLeft size={16} /></button>
+                    <button onClick={() => scroll('right')} className="p-1.5 bg-white border border-border rounded-full hover:bg-muted transition shadow-sm"><ChevronRight size={16} /></button>
+                </div>
+            </div>
+
+            <div
+                ref={scrollRef}
+                className="flex gap-5 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x snap-mandatory scroll-smooth"
+            >
+                {items.map(item => <ItemCard key={item.id} item={item} onPlay={onPlay} />)}
+            </div>
+        </section>
     )
 }
 
@@ -56,20 +104,15 @@ export default function Home() {
     const { playItem } = usePlayer()
     const { driveItems, isConnected, isLoading, error, login, refresh } = useDrive()
 
-    const audiobooks = useMemo(() => {
-        const drive = driveItems.filter(i => i.type === 'audiobook')
-        return [...drive, ...DEMO_AUDIOBOOKS]
+    // Categorization
+    const collections = useMemo(() => {
+        return {
+            audiobooks: driveItems.filter(i => i.type === 'audiobook'),
+            ebooks: driveItems.filter(i => i.type === 'ebook'),
+            videos: driveItems.filter(i => i.type === 'video-summary'),
+            finance: driveItems.filter(i => i.type === 'finance')
+        }
     }, [driveItems])
-
-    const ebooks = useMemo(() => {
-        const drive = driveItems.filter(i => i.type === 'ebook')
-        return [...drive, ...DEMO_EBOOKS]
-    }, [driveItems])
-
-    const videos = useMemo(() => driveItems.filter(i => i.type === 'video-summary'), [driveItems])
-    const finance = useMemo(() => driveItems.filter(i => i.type === 'finance'), [driveItems])
-
-    const continueListening = useMemo(() => ALL_ITEMS.filter(item => item.currentTime > 0), [])
 
     const greeting = useMemo(() => {
         const h = new Date().getHours()
@@ -79,149 +122,76 @@ export default function Home() {
     }, [])
 
     return (
-        <div className="w-full max-w-4xl mx-auto px-5 pt-8 pb-32 animate-in fade-in duration-500">
-            {/* Header */}
-            <header className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-foreground tracking-tight">{greeting} ✨</h1>
-                    <p className="text-sm text-muted-foreground mt-1">O que vamos absorver hoje?</p>
+        <div className="w-full max-w-5xl mx-auto px-5 pt-8 pb-32 animate-in fade-in duration-700">
+            {/* Minimal Elegant Header */}
+            <header className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground font-black text-xl shadow-lg rotate-3">
+                        A
+                    </div>
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-black text-foreground">{greeting} ✨</h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground/80 font-medium">Sua biblioteca digital, refinada.</p>
+                    </div>
                 </div>
-                <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-md">
+                <div className="w-10 h-10 rounded-full bg-white border-2 border-primary/20 flex items-center justify-center text-primary font-bold shadow-sm cursor-pointer hover:border-primary transition-colors">
                     HS
                 </div>
             </header>
 
-            {/* Error handling */}
+            {/* Sync Alert (Only if error) */}
             {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700">
-                    <CloudOff className="shrink-0 mt-0.5" size={18} />
-                    <div className="flex-1">
-                        <p className="font-semibold text-sm">Problema com o Drive</p>
-                        <p className="text-xs mt-1 opacity-90">{error}</p>
+                <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center justify-between text-red-600 animate-in slide-in-from-top-4">
+                    <div className="flex items-center gap-3">
+                        <CloudOff size={18} />
+                        <span className="text-xs font-bold">{error}</span>
                     </div>
-                    <button onClick={() => login()} className="text-xs font-bold bg-white px-3 py-1.5 rounded-full shadow-sm hover:bg-red-50 transition border border-red-100">
-                        Reconectar
-                    </button>
+                    <button onClick={() => login()} className="text-xs font-black uppercase tracking-widest bg-white px-4 py-2 rounded-full shadow-sm hover:bg-red-50">Logar</button>
                 </div>
             )}
 
-            {/* Drive Sync Card */}
-            <div className="mb-10 bg-card rounded-2xl p-5 shadow-sm border border-border flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
-                {!isConnected ? (
-                    <>
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                                <CloudOff size={20} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-sm text-foreground">Drive Desconectado</h3>
-                                <p className="text-xs text-muted-foreground">Conecte para sincronizar seus livros reais</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => login()}
-                            disabled={isLoading}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-foreground text-background px-5 py-2.5 rounded-full text-sm font-bold shadow-md hover:opacity-90 transition disabled:opacity-50"
-                        >
-                            {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Database size={16} />}
-                            {isLoading ? 'Conectando...' : 'Conectar Agora'}
+            {/* Connection Banner (Premium Style) */}
+            {!isConnected && (
+                <div className="mb-12 relative overflow-hidden bg-[#2d2a26] text-white rounded-3xl p-8 shadow-2xl group cursor-pointer" onClick={() => login()}>
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/20 rounded-full -mr-20 -mt-20 blur-3xl transition-all group-hover:bg-primary/40"></div>
+                    <div className="relative z-10">
+                        <h3 className="text-2xl font-black mb-2">Conecte seu Google Drive</h3>
+                        <p className="text-sm text-white/60 mb-6 max-w-xs">Acesse todos os seus livros e áudios instantaneamente em uma interface premium.</p>
+                        <button className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full text-sm font-black shadow-lg hover:scale-105 active:scale-95 transition-all">
+                            <Database size={18} />
+                            Sincronizar Agora
                         </button>
-                    </>
-                ) : (
-                    <>
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[#e8f5e9] flex items-center justify-center text-[#2e7d32] shrink-0 font-bold">
-                                {driveItems.length}
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-sm text-foreground">Drive Sincronizado</h3>
-                                <p className="text-xs text-muted-foreground">Sua livraria na nuvem está pronta</p>
-                            </div>
+                    </div>
+                    <div className="absolute bottom-4 right-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <CloudOff size={120} strokeWidth={1} />
+                    </div>
+                </div>
+            )}
+
+            {/* Loading Placeholder */}
+            {isLoading && (
+                <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+                    <Loader2 className="animate-spin text-primary mb-4" size={40} />
+                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Sincronizando Biblioteca...</span>
+                </div>
+            )}
+
+            {/* Main Content Sections */}
+            {!isLoading && isConnected && (
+                <div className="space-y-4">
+                    <SectionCarousel title="Audiobooks" items={collections.audiobooks} onPlay={playItem} icon={PlayCircle} />
+                    <SectionCarousel title="E-books" items={collections.ebooks} onPlay={playItem} icon={BookOpen} />
+                    <SectionCarousel title="Conteúdo em Vídeo" items={collections.videos} onPlay={playItem} icon={Video} />
+                    <SectionCarousel title="Finanças & Docs" items={collections.finance} onPlay={playItem} icon={DollarSign} />
+
+                    {driveItems.length === 0 && !isLoading && (
+                        <div className="py-20 text-center">
+                            <Database size={48} className="mx-auto text-muted mb-4 opacity-30" />
+                            <p className="text-lg font-bold text-muted-foreground">Nenhum arquivo encontrado nas pastas.</p>
+                            <button onClick={refresh} className="mt-4 text-primary font-black text-sm uppercase tracking-widest">Tentar Novamente</button>
                         </div>
-                        <button
-                            onClick={refresh}
-                            disabled={isLoading}
-                            className="flex items-center justify-center gap-2 bg-muted text-foreground px-4 py-2 rounded-full text-xs font-bold hover:bg-border transition disabled:opacity-50"
-                        >
-                            <RefreshCw className={isLoading ? "animate-spin" : ""} size={14} />
-                            {isLoading ? 'Checando...' : 'Atualizar'}
-                        </button>
-                    </>
-                )}
-            </div>
-
-            {/* Continue Listening */}
-            {continueListening.length > 0 && (
-                <section className="mb-10">
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">Continuar Consumindo</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {continueListening.map(item => {
-                            const progress = getProgressPercent(item.currentTime, item.type === 'audiobook' ? item.duration : item.pages)
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => playItem(item)}
-                                    className="flex items-center gap-4 p-3 bg-card rounded-xl border border-border shadow-sm hover:border-primary/30 transition-colors text-left focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                >
-                                    <BookCover item={item} className="w-16 h-16 shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-sm truncate">{item.title}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{item.author}</p>
-                                        <div className="h-1.5 w-full bg-muted rounded-full mt-2 overflow-hidden">
-                                            <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                                        </div>
-                                    </div>
-                                </button>
-                            )
-                        })}
-                    </div>
-                </section>
-            )}
-
-            {/* Premium Carousels */}
-            <section className="mb-10">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold flex items-center gap-2">🎧 Áudiobooks Premium</h2>
-                    <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full">{audiobooks.length}</span>
+                    )}
                 </div>
-                <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
-                    {audiobooks.map(item => <ItemCard key={item.id} item={item} onPlay={playItem} />)}
-                </div>
-            </section>
-
-            <section className="mb-10">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold flex items-center gap-2">📖 Leituras (PDF/ePub)</h2>
-                    <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full">{ebooks.length}</span>
-                </div>
-                <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
-                    {ebooks.map(item => <ItemCard key={item.id} item={item} onPlay={playItem} />)}
-                </div>
-            </section>
-
-            {videos.length > 0 && (
-                <section className="mb-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold flex items-center gap-2">📹 Resumos em Vídeo</h2>
-                        <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full">{videos.length}</span>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
-                        {videos.map(item => <ItemCard key={item.id} item={item} onPlay={playItem} />)}
-                    </div>
-                </section>
-            )}
-
-            {finance.length > 0 && (
-                <section className="mb-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold flex items-center gap-2">💰 Inteligência Financeira</h2>
-                        <span className="text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full">{finance.length}</span>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-5 px-5 snap-x">
-                        {finance.map(item => <ItemCard key={item.id} item={item} onPlay={playItem} />)}
-                    </div>
-                </section>
             )}
         </div>
     )

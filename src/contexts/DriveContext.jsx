@@ -25,7 +25,7 @@ async function fetchAllFiles(query, token) {
         const url = new URL('https://www.googleapis.com/drive/v3/files')
         url.searchParams.set('q', query)
         url.searchParams.set('fields', 'nextPageToken,files(id,name,mimeType,modifiedTime,thumbnailLink,webViewLink,parents,size)')
-        url.searchParams.set('pageSize', '1000')
+        url.searchParams.set('pageSize', '1000') // Max per page
         if (nextPageToken) url.searchParams.set('pageToken', nextPageToken)
 
         try {
@@ -40,10 +40,9 @@ async function fetchAllFiles(query, token) {
     return allFiles
 }
 
-// Extract max res image from thumbnail
 function getHighResThumb(thumbnailLink) {
     if (!thumbnailLink) return null
-    return thumbnailLink.replace(/=s\d+/, '=s1000') // force 1000px instead of 220px
+    return thumbnailLink.replace(/=s\d+/, '=s1000')
 }
 
 export const DriveProvider = ({ children }) => {
@@ -67,156 +66,150 @@ export const DriveProvider = ({ children }) => {
         setError(null)
 
         try {
-            // 1. Fetch direct children of the 4 root folders
-            const rootQuery = `(
+            // STEP 1: Fetch EVERYTHING from all folders (recursive-like flat search)
+            // Using "shortcut" to find all files that have any of our root folders as parents
+            const query = `(
                 '${FOLDERS.AUDIOBOOKS}' in parents or 
                 '${FOLDERS.EBOOKS}' in parents or 
                 '${FOLDERS.VIDEOS}' in parents or 
                 '${FOLDERS.FINANCE}' in parents
             ) and trashed = false`
 
-            const rootFiles = await fetchAllFiles(rootQuery, accessToken)
+            const rawFiles = await fetchAllFiles(query, accessToken)
+            console.log(`[Acervo Sync] Found ${rawFiles.length} raw files/folders in roots.`)
 
-            // 2. Separate folders from standalone files
-            const subFolders = rootFiles.filter(f => f.mimeType === 'application/vnd.google-apps.folder')
-            let subFiles = []
+            // STEP 2: Handle Subfolders (Dive deep once)
+            const subFolders = rawFiles.filter(f => f.mimeType === 'application/vnd.google-apps.folder')
+            let deepFiles = []
 
-            // 3. Fetch contents of those subfolders
             if (subFolders.length > 0) {
-                const CHUNK_SIZE = 30
-                for (let i = 0; i < subFolders.length; i += CHUNK_SIZE) {
-                    const chunk = subFolders.slice(i, i + CHUNK_SIZE)
+                // Batch query for efficiency
+                const chunkSize = 25
+                for (let i = 0; i < subFolders.length; i += chunkSize) {
+                    const chunk = subFolders.slice(i, i + chunkSize)
                     const parentsQ = chunk.map(sf => `'${sf.id}' in parents`).join(' or ')
                     const subQ = `(${parentsQ}) and trashed = false`
                     const chunkFiles = await fetchAllFiles(subQ, accessToken)
-                    subFiles = subFiles.concat(chunkFiles)
+                    deepFiles = deepFiles.concat(chunkFiles)
                 }
             }
 
-            // 4. Combine and group into an intelligent library!
+            // STEP 3: Classification engine (Loose Files + Folders)
+            const allFiles = [...rawFiles.filter(f => f.mimeType !== 'application/vnd.google-apps.folder'), ...deepFiles]
             const items = []
 
-            // Map subfolders by ID so we can get their names easily
-            const folderMap = new Map()
-            subFolders.forEach(sf => folderMap.set(sf.id, sf))
-
-            // Group subfiles by parent folder
-            const groupsByFolder = {}
-            subFiles.forEach(f => {
+            // Group files by parent to handle "Multi-track" folders
+            const folderContentMap = {}
+            allFiles.forEach(f => {
                 const pid = f.parents?.[0]
                 if (!pid) return
-                if (!groupsByFolder[pid]) groupsByFolder[pid] = { audios: [], docs: [], images: [], videos: [] }
-
-                if (f.mimeType.startsWith('audio/')) groupsByFolder[pid].audios.push(f)
-                else if (f.mimeType.startsWith('video/')) groupsByFolder[pid].videos.push(f)
-                else if (f.mimeType.startsWith('image/')) groupsByFolder[pid].images.push(f)
-                else groupsByFolder[pid].docs.push(f)
+                if (!folderContentMap[pid]) folderContentMap[pid] = []
+                folderContentMap[pid].push(f)
             })
 
-            // Process folders (Multi-track Audiobooks & Complex Folders)
-            Object.keys(groupsByFolder).forEach(folderId => {
-                const grp = groupsByFolder[folderId]
-                const folderInfo = folderMap.get(folderId) || { name: 'Pasta Desconhecida' }
+            // Meta-map for folder names
+            const folderMetadata = {}
+            subFolders.forEach(f => folderMetadata[f.id] = f)
 
-                // Try to find a cover image (prioritize files named cover/capa)
-                let coverImg = grp.images.find(img => img.name.match(/cover|capa|front/i))
-                if (!coverImg && grp.images.length > 0) coverImg = grp.images[0]
-                const highResCover = coverImg ? getHighResThumb(coverImg.thumbnailLink) : null
+            // 1. Process Folders as potentially grouped items
+            Object.keys(folderContentMap).forEach(fid => {
+                const contents = folderContentMap[fid]
+                const audios = contents.filter(f => f.mimeType.startsWith('audio/') || f.name.match(/\.(mp3|m4a|wav|aac)$/i))
+                const info = folderMetadata[fid] || { name: 'Pasta' }
 
-                if (grp.audios.length > 0) {
-                    // Sort audio files alphabetically to construct playable tracks
-                    const sortedTracks = grp.audios.sort((a, b) => a.name.localeCompare(b.name)).map(t => ({
-                        id: t.id,
-                        name: t.name,
-                        driveId: t.id,
-                        mimeType: t.mimeType
-                    }))
+                if (audios.length > 1) {
+                    // It's a Multi-track Audiobook
+                    const cover = contents.find(f => f.mimeType.startsWith('image/') || f.name.match(/\.(jpg|jpeg|png)$/i))
+                    const sortedAudios = audios.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
 
                     items.push({
-                        id: `folder-${folderId}`, // unique ID for the whole audiobook
-                        isMultiTrack: true,
-                        driveId: sortedTracks[0].driveId, // First track fallback
-                        tracks: sortedTracks,
-                        title: folderInfo.name,
+                        id: `folder-${fid}`,
+                        title: info.name,
                         author: 'Meu Drive',
                         type: 'audiobook',
-                        thumbnail: highResCover,
-                        coverGradient: highResCover ? null : 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)'
+                        isMultiTrack: true,
+                        tracks: sortedAudios.map(a => ({ id: a.id, name: a.name, driveId: a.id })),
+                        thumbnail: getHighResThumb(cover?.thumbnailLink || audios[0].thumbnailLink),
+                        coverGradient: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)'
                     })
+                    // Remove these audios from loose processing
+                    audios.forEach(a => a._processed = true)
                 }
             })
 
-            // Process loose files (Single-track items, standalone PDFs)
-            const looseFiles = rootFiles.filter(f => f.mimeType !== 'application/vnd.google-apps.folder')
-            looseFiles.forEach(f => {
-                const highResThumb = getHighResThumb(f.thumbnailLink)
+            // 2. Process all loose files (including those in small subfolders)
+            allFiles.forEach(f => {
+                if (f._processed) return
 
                 let type = 'other'
-                let color = 'linear-gradient(135deg, #6b7280 0%, #374151 100%)'
+                let gradient = 'linear-gradient(135deg, #6b7280 0%, #374151 100%)'
 
-                if (f.mimeType.startsWith('audio/')) { type = 'audiobook'; color = 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }
-                else if (f.mimeType.startsWith('video/')) { type = 'video-summary'; color = 'linear-gradient(135deg, #dc2626 0%, #d97706 100%)' }
-                else if (f.mimeType === 'application/pdf' || f.mimeType === 'application/epub+zip') {
-                    if (f.parents?.includes(FOLDERS.FINANCE)) { type = 'finance'; color = 'linear-gradient(135deg, #059669 0%, #0891b2 100%)' }
-                    else { type = 'ebook'; color = 'linear-gradient(135deg, #ea580c 0%, #db2777 100%)' }
+                const name = f.name.toLowerCase()
+                const mime = f.mimeType.toLowerCase()
+
+                if (mime.startsWith('audio/') || name.match(/\.(mp3|m4a|wav|aac|ogg)$/)) {
+                    type = 'audiobook'
+                    gradient = 'linear-gradient(135deg, #d46a43 0%, #a84a2d 100%)'
+                } else if (mime === 'application/pdf' || mime.includes('epub') || name.endsWith('.pdf') || name.endsWith('.epub')) {
+                    if (f.parents?.includes(FOLDERS.FINANCE)) {
+                        type = 'finance'
+                        gradient = 'linear-gradient(135deg, #059669 0%, #064e3b 100%)'
+                    } else {
+                        type = 'ebook'
+                        gradient = 'linear-gradient(135deg, #5b21b6 0%, #1e3a8a 100%)'
+                    }
+                } else if (mime.startsWith('video/') || name.match(/\.(mp4|mov|avi|mkv|webm)$/)) {
+                    type = 'video-summary'
+                    gradient = 'linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)'
+                } else if (f.parents?.includes(FOLDERS.FINANCE)) {
+                    type = 'finance'
+                    gradient = 'linear-gradient(135deg, #059669 0%, #064e3b 100%)'
                 }
 
                 items.push({
-                    id: `file-${f.id}`,
-                    isMultiTrack: false,
-                    driveId: f.id,
+                    id: f.id,
                     title: f.name.replace(/\.[^/.]+$/, ''),
                     author: 'Meu Drive',
                     type,
-                    mimeType: f.mimeType,
+                    driveId: f.id,
                     webViewLink: f.webViewLink,
-                    thumbnail: highResThumb,
-                    coverGradient: highResThumb ? null : color
+                    thumbnail: getHighResThumb(f.thumbnailLink),
+                    coverGradient: gradient,
+                    modifyTime: f.modifiedTime
                 })
             })
 
-            console.log(`[Acervo Smart Drive] Loaded ${items.length} intelligent items (folders combined).`)
             setDriveItems(items)
+            console.log(`[Acervo Sync] Available: ${items.length} items.`)
         } catch (err) {
-            console.error('[Acervo] Drive fetch error:', err?.response?.data || err.message)
-            if (err?.response?.status === 401) {
-                setError('Sessão expirada. Por favor, reconecte o Google Drive.')
-                handleLogout()
-            } else {
-                setError('Erro ao buscar arquivos. Verifique a conexão.')
-            }
+            console.error('[Acervo Sync Error]', err)
+            setError('Falha ao puxar arquivos. Tente reconectar.')
         } finally {
             setIsLoading(false)
         }
-    }, [handleLogout])
+    }, [])
 
     const login = useGoogleLogin({
-        onSuccess: (response) => {
-            const accessToken = response.access_token
-            setToken(accessToken)
-            tokenRef.current = accessToken
-            localStorage.setItem('gdrive_token', accessToken)
-            fetchDriveFiles(accessToken)
+        onSuccess: (res) => {
+            const token = res.access_token
+            setToken(token)
+            localStorage.setItem('gdrive_token', token)
+            fetchDriveFiles(token)
         },
-        onError: (err) => {
-            console.error('[Acervo] Google login error:', err)
-            setError('Erro no login com Google.')
-        },
-        scope: 'https://www.googleapis.com/auth/drive.readonly',
+        scope: 'https://www.googleapis.com/auth/drive.readonly'
     })
-
-    useEffect(() => {
-        if (token) fetchDriveFiles(token)
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const refresh = useCallback(() => {
         if (token) fetchDriveFiles(token)
     }, [token, fetchDriveFiles])
 
+    useEffect(() => {
+        if (token) fetchDriveFiles(token)
+    }, [token, fetchDriveFiles])
+
     return (
         <DriveContext.Provider value={{
-            login, logout: handleLogout, refresh, driveItems, isLoading, error,
-            isConnected: !!token, token, folders: FOLDERS,
+            driveItems, isLoading, error, isConnected: !!token, token, login, logout: handleLogout, refresh
         }}>
             {children}
         </DriveContext.Provider>
