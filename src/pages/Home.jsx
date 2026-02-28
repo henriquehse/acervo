@@ -1,22 +1,19 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useDrive } from '../contexts/DriveContext'
 import { DEMO_AUDIOBOOKS, DEMO_EBOOKS, ALL_ITEMS } from '../utils/data'
 import { getProgressPercent, formatDuration } from '../utils/helpers'
 import BookCover from '../components/BookCover'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CloudOff, Database, RefreshCw } from 'lucide-react'
 import './Home.css'
 
 function ItemCard({ item, onPlay }) {
     const subtitle = useMemo(() => {
-        if (item.type === 'audiobook') {
-            return item.duration ? formatDuration(item.duration) : '🎧 Áudio'
-        }
-        if (item.type === 'ebook') {
-            return item.pages ? `${item.pages} páginas` : '📖 Abrir ↗'
-        }
-        if (item.type === 'video-summary') return '📹 Vídeo'
-        if (item.type === 'finance') return '📊 Doc'
+        if (item.type === 'audiobook') return item.duration ? formatDuration(item.duration) : '🎧 Áudio do Drive'
+        if (item.type === 'ebook') return item.pages ? `${item.pages} páginas` : '📖 Abrir no Drive ↗'
+        if (item.type === 'video-summary') return '📹 Abrir no Drive ↗'
+        if (item.type === 'finance') return '📊 Abrir no Drive ↗'
         return ''
     }, [item])
 
@@ -32,29 +29,23 @@ function ItemCard({ item, onPlay }) {
 
 export default function Home() {
     const { playItem } = usePlayer()
-    const { driveItems, isConnected, isLoading } = useDrive()
+    const { driveItems, isConnected, isLoading, error, login, refresh } = useDrive()
+    const navigate = useNavigate()
 
     const audiobooks = useMemo(() => {
-        const drive = isConnected ? driveItems.filter(i => i.type === 'audiobook') : []
+        const drive = driveItems.filter(i => i.type === 'audiobook')
         return [...drive, ...DEMO_AUDIOBOOKS]
-    }, [driveItems, isConnected])
+    }, [driveItems])
 
     const ebooks = useMemo(() => {
-        const drive = isConnected ? driveItems.filter(i => i.type === 'ebook') : []
+        const drive = driveItems.filter(i => i.type === 'ebook')
         return [...drive, ...DEMO_EBOOKS]
-    }, [driveItems, isConnected])
+    }, [driveItems])
 
-    const videos = useMemo(() =>
-        isConnected ? driveItems.filter(i => i.type === 'video-summary') : []
-        , [driveItems, isConnected])
+    const videos = useMemo(() => driveItems.filter(i => i.type === 'video-summary'), [driveItems])
+    const finance = useMemo(() => driveItems.filter(i => i.type === 'finance'), [driveItems])
 
-    const finance = useMemo(() =>
-        isConnected ? driveItems.filter(i => i.type === 'finance') : []
-        , [driveItems, isConnected])
-
-    const continueListening = useMemo(() =>
-        ALL_ITEMS.filter(item => item.currentTime > 0)
-        , [])
+    const continueListening = useMemo(() => ALL_ITEMS.filter(item => item.currentTime > 0), [])
 
     const greeting = useMemo(() => {
         const h = new Date().getHours()
@@ -62,6 +53,8 @@ export default function Home() {
         if (h < 18) return 'Boa tarde'
         return 'Boa noite'
     }, [])
+
+    const driveCount = driveItems.length
 
     return (
         <div className="home" id="home-page">
@@ -76,11 +69,45 @@ export default function Home() {
                 </div>
             </header>
 
-            {/* Drive loading indicator */}
+            {/* Drive Connection Banner — shown when not connected */}
+            {!isConnected && !isLoading && (
+                <div className="home__drive-banner" id="drive-connect-banner">
+                    <div className="home__drive-banner-icon">
+                        <CloudOff size={22} />
+                    </div>
+                    <div className="home__drive-banner-text">
+                        <p className="home__drive-banner-title">Google Drive desconectado</p>
+                        <p className="home__drive-banner-sub">Conecte para ver seus audiobooks e e-books reais</p>
+                    </div>
+                    <button className="home__drive-banner-btn" onClick={() => login()} id="home-connect-drive">
+                        <Database size={14} />
+                        Conectar
+                    </button>
+                </div>
+            )}
+
+            {/* Drive connected — show count + refresh */}
+            {isConnected && !isLoading && driveCount > 0 && (
+                <div className="home__drive-connected">
+                    <span>✅ Drive conectado — {driveCount} arquivos</span>
+                    <button onClick={refresh} className="home__drive-refresh">
+                        <RefreshCw size={12} /> Sincronizar
+                    </button>
+                </div>
+            )}
+
+            {/* Drive loading */}
             {isLoading && (
                 <div className="home__drive-loading">
                     <Loader2 size={14} className="spin" />
-                    <span>Sincronizando com o Drive...</span>
+                    <span>Buscando arquivos no Drive...</span>
+                </div>
+            )}
+
+            {/* Drive error */}
+            {error && (
+                <div className="home__drive-error">
+                    ⚠️ {error} — <button onClick={() => login()}>Reconectar</button>
                 </div>
             )}
 
