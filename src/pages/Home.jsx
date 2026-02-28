@@ -4,40 +4,57 @@ import { useDrive } from '../contexts/DriveContext'
 import { DEMO_AUDIOBOOKS, DEMO_EBOOKS, ALL_ITEMS } from '../utils/data'
 import { getProgressPercent, formatDuration } from '../utils/helpers'
 import BookCover from '../components/BookCover'
+import { Loader2 } from 'lucide-react'
 import './Home.css'
 
+function ItemCard({ item, onPlay }) {
+    const subtitle = useMemo(() => {
+        if (item.type === 'audiobook') {
+            return item.duration ? formatDuration(item.duration) : '🎧 Áudio'
+        }
+        if (item.type === 'ebook') {
+            return item.pages ? `${item.pages} páginas` : '📖 Abrir ↗'
+        }
+        if (item.type === 'video-summary') return '📹 Vídeo'
+        if (item.type === 'finance') return '📊 Doc'
+        return ''
+    }, [item])
+
+    return (
+        <div className="home__card" onClick={() => onPlay(item)} id={`item-${item.id}`}>
+            <BookCover item={item} size="md" />
+            <p className="home__card-title">{item.title}</p>
+            <p className="home__card-meta">{item.author}</p>
+            <p className="home__card-duration">{subtitle}</p>
+        </div>
+    )
+}
+
 export default function Home() {
-    const { playItem, currentItem } = usePlayer()
-    const { driveItems, isConnected } = useDrive()
+    const { playItem } = usePlayer()
+    const { driveItems, isConnected, isLoading } = useDrive()
 
     const audiobooks = useMemo(() => {
-        const driveAudiobooks = isConnected ? driveItems.filter(i => i.type === 'audiobook') : []
-        return [...driveAudiobooks, ...DEMO_AUDIOBOOKS]
+        const drive = isConnected ? driveItems.filter(i => i.type === 'audiobook') : []
+        return [...drive, ...DEMO_AUDIOBOOKS]
     }, [driveItems, isConnected])
 
     const ebooks = useMemo(() => {
-        const driveEbooks = isConnected ? driveItems.filter(i => i.type === 'ebook') : []
-        return [...driveEbooks, ...DEMO_EBOOKS]
+        const drive = isConnected ? driveItems.filter(i => i.type === 'ebook') : []
+        return [...drive, ...DEMO_EBOOKS]
     }, [driveItems, isConnected])
 
-    const videoSummaries = useMemo(() => {
-        return isConnected ? driveItems.filter(i => i.type === 'video-summary') : []
-    }, [driveItems, isConnected])
+    const videos = useMemo(() =>
+        isConnected ? driveItems.filter(i => i.type === 'video-summary') : []
+        , [driveItems, isConnected])
 
-    const financeItems = useMemo(() => {
-        return isConnected ? driveItems.filter(i => i.type === 'finance') : []
-    }, [driveItems, isConnected])
+    const finance = useMemo(() =>
+        isConnected ? driveItems.filter(i => i.type === 'finance') : []
+        , [driveItems, isConnected])
 
-    const totalItems = useMemo(() => [
-        ...audiobooks,
-        ...ebooks,
-        ...videoSummaries,
-        ...financeItems
-    ], [audiobooks, ebooks, videoSummaries, financeItems])
-
-    const continueListening = useMemo(() => {
-        return ALL_ITEMS.filter(item => item.currentTime > 0)
-    }, [])
+    const continueListening = useMemo(() =>
+        ALL_ITEMS.filter(item => item.currentTime > 0)
+        , [])
 
     const greeting = useMemo(() => {
         const h = new Date().getHours()
@@ -48,7 +65,7 @@ export default function Home() {
 
     return (
         <div className="home" id="home-page">
-            {/* Hero greeting */}
+            {/* Hero */}
             <header className="home__header">
                 <div className="home__greeting">
                     <h1 className="home__title">{greeting} ✨</h1>
@@ -58,6 +75,14 @@ export default function Home() {
                     <span>HS</span>
                 </div>
             </header>
+
+            {/* Drive loading indicator */}
+            {isLoading && (
+                <div className="home__drive-loading">
+                    <Loader2 size={14} className="spin" />
+                    <span>Sincronizando com o Drive...</span>
+                </div>
+            )}
 
             {/* Continue Listening */}
             {continueListening.length > 0 && (
@@ -99,14 +124,7 @@ export default function Home() {
                 </h2>
                 <div className="home__scroll-row">
                     {audiobooks.map(item => (
-                        <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`audiobook-${item.id}`}>
-                            <BookCover item={item} size="md" />
-                            <p className="home__card-title">{item.title}</p>
-                            <p className="home__card-meta">{item.author}</p>
-                            <p className="home__card-duration">
-                                {item.duration ? formatDuration(item.duration) : 'Áudio do Drive'}
-                            </p>
-                        </div>
+                        <ItemCard key={item.id} item={item} onPlay={playItem} />
                     ))}
                 </div>
             </section>
@@ -119,62 +137,43 @@ export default function Home() {
                 </h2>
                 <div className="home__scroll-row">
                     {ebooks.map(item => (
-                        <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`ebook-${item.id}`}>
-                            <BookCover item={item} size="md" />
-                            <p className="home__card-title">{item.title}</p>
-                            <p className="home__card-meta">{item.author}</p>
-                            <p className="home__card-duration" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {item.pages ? `${item.pages} páginas` : (
-                                    <>
-                                        Abrir Documento ↗
-                                    </>
-                                )}
-                            </p>
-                        </div>
+                        <ItemCard key={item.id} item={item} onPlay={playItem} />
                     ))}
                 </div>
             </section>
 
-            {/* Video Summaries */}
-            {videoSummaries.length > 0 && (
+            {/* Videos */}
+            {videos.length > 0 && (
                 <section className="home__section animate-slideUp" style={{ animationDelay: '300ms' }}>
                     <h2 className="home__section-title">
-                        📹 Video Resumos
-                        <span className="home__section-count">{videoSummaries.length}</span>
+                        📹 Vídeos
+                        <span className="home__section-count">{videos.length}</span>
                     </h2>
                     <div className="home__scroll-row">
-                        {videoSummaries.map(item => (
-                            <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`video-${item.id}`}>
-                                <BookCover item={item} size="md" />
-                                <p className="home__card-title">{item.title}</p>
-                                <p className="home__card-meta">Resumo em Vídeo</p>
-                            </div>
+                        {videos.map(item => (
+                            <ItemCard key={item.id} item={item} onPlay={playItem} />
                         ))}
                     </div>
                 </section>
             )}
 
-            {/* Finance Items */}
-            {financeItems.length > 0 && (
+            {/* Finance */}
+            {finance.length > 0 && (
                 <section className="home__section animate-slideUp" style={{ animationDelay: '400ms' }}>
                     <h2 className="home__section-title">
                         💰 Financeiro
-                        <span className="home__section-count">{financeItems.length}</span>
+                        <span className="home__section-count">{finance.length}</span>
                     </h2>
                     <div className="home__scroll-row">
-                        {financeItems.map(item => (
-                            <div key={item.id} className="home__card" onClick={() => playItem(item)} id={`finance-${item.id}`}>
-                                <BookCover item={item} size="md" />
-                                <p className="home__card-title">{item.title}</p>
-                                <p className="home__card-meta">Documento</p>
-                            </div>
+                        {finance.map(item => (
+                            <ItemCard key={item.id} item={item} onPlay={playItem} />
                         ))}
                     </div>
                 </section>
             )}
 
             {/* Categories */}
-            <section className="home__section animate-slideUp" style={{ animationDelay: '300ms' }}>
+            <section className="home__section animate-slideUp" style={{ animationDelay: '500ms' }}>
                 <h2 className="home__section-title">Categorias</h2>
                 <div className="home__categories">
                     {['Desenvolvimento Pessoal', 'Finanças', 'Psicologia', 'História', 'Filosofia', 'Estratégia'].map((cat, i) => (
@@ -190,7 +189,6 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Spacer for bottom nav + mini player */}
             <div className="home__spacer" />
         </div>
     )

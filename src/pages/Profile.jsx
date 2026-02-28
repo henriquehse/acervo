@@ -2,12 +2,12 @@ import { usePlayer } from '../contexts/PlayerContext'
 import { useDrive } from '../contexts/DriveContext'
 import { ALL_ITEMS } from '../utils/data'
 import { formatTime } from '../utils/helpers'
-import { LogOut, Settings, Bell, HelpCircle, Bookmark, Clock, ChevronRight, Headphones, BookOpen, Zap, Database } from 'lucide-react'
+import { LogOut, Settings, Bell, HelpCircle, Bookmark, Clock, ChevronRight, Headphones, BookOpen, Zap, Database, RefreshCw, AlertCircle } from 'lucide-react'
 import './Profile.css'
 
 export default function Profile() {
     const { bookmarks } = usePlayer()
-    const { login, logout, isConnected, driveItems } = useDrive()
+    const { login, logout, isConnected, driveItems, isLoading, error, refresh } = useDrive()
 
     const stats = {
         total: ALL_ITEMS.length + (isConnected ? driveItems.length : 0),
@@ -37,12 +37,33 @@ export default function Profile() {
                         <span>Conectar Drive</span>
                     </button>
                 ) : (
-                    <button className="profile__connect-btn profile__connect-btn--active" onClick={() => logout()}>
-                        <Database size={16} />
-                        <span>Drive Conectado</span>
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                        <button className="profile__connect-btn profile__connect-btn--active" onClick={() => logout()}>
+                            <Database size={16} />
+                            <span>Drive Conectado</span>
+                        </button>
+                        <button onClick={refresh} style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', cursor: 'pointer' }}>
+                            <RefreshCw size={12} /> Sincronizar
+                        </button>
+                    </div>
                 )}
             </div>
+
+            {/* Drive error banner */}
+            {error && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#dc2626' }}>
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                    <button onClick={() => login()} style={{ marginLeft: 'auto', fontWeight: 600, cursor: 'pointer', color: '#dc2626', background: 'none' }}>Reconectar</button>
+                </div>
+            )}
+
+            {/* Loading indicator */}
+            {isLoading && (
+                <div style={{ textAlign: 'center', padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    Sincronizando com o Drive...
+                </div>
+            )}
 
             {/* Stats */}
             <div className="profile__stats">
