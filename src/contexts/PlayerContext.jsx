@@ -125,28 +125,34 @@ export const PlayerProvider = ({ children }) => {
 
     // Main Play Function
     const playItem = useCallback((item, trackIdx = 0) => {
-        // Handle PDF natively soon! But for videos and finance, open external to save effort.
+        // Videos and Finance: open in Drive directly
         if (item.type === 'video-summary' || item.type === 'finance') {
-            const link = item.webViewLink || (item.driveId ? `https://drive.google.com/file/d/${item.driveId}/view` : null)
-            if (link) window.open(link, '_blank', 'noopener,noreferrer')
+            const link = item.webViewLink || `https://drive.google.com/file/d/${item.driveId}/view`
+            window.open(link, '_blank', 'noopener,noreferrer')
             return
         }
 
-        // Handle Ebooks opening native viewer
+        // Ebooks: Use Google Drive Viewer (100% reliable, no CORS issues)
         if (item.type === 'ebook') {
-            setCurrentPdfItem(item)
+            const driveViewerUrl = item.driveId
+                ? `https://drive.google.com/file/d/${item.driveId}/view`
+                : item.webViewLink
+            if (driveViewerUrl) {
+                window.open(driveViewerUrl, '_blank', 'noopener,noreferrer')
+            }
             return
         }
 
-        // Handle Audiobooks
+        // Audiobooks: Stream via Drive API with current token
+        const currentToken = token || localStorage.getItem('gdrive_token')
         let src = item.audioUrl || item.src
 
         if (item.isMultiTrack && item.tracks?.length > 0) {
             setCurrentTrackIndex(trackIdx)
             const track = item.tracks[trackIdx]
-            src = `https://www.googleapis.com/drive/v3/files/${track.driveId}?alt=media&access_token=${token}`
-        } else if (item.driveId && token) {
-            src = `https://www.googleapis.com/drive/v3/files/${item.driveId}?alt=media&access_token=${token}`
+            src = `https://www.googleapis.com/drive/v3/files/${track.driveId}?alt=media&access_token=${currentToken}`
+        } else if (item.driveId && currentToken) {
+            src = `https://www.googleapis.com/drive/v3/files/${item.driveId}?alt=media&access_token=${currentToken}`
         }
 
         if (src) {

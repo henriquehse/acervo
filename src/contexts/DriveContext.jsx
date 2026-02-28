@@ -28,6 +28,7 @@ async function fetchAllFiles(query, token) {
         url.searchParams.set('pageSize', '1000')
         url.searchParams.set('supportsAllDrives', 'true')
         url.searchParams.set('includeItemsFromAllDrives', 'true')
+        url.searchParams.set('corpora', 'allDrives')
         if (nextPageToken) url.searchParams.set('pageToken', nextPageToken)
 
         try {
@@ -186,7 +187,7 @@ export const DriveProvider = ({ children }) => {
 
     return (
         <DriveContext.Provider value={{
-            driveItems, isLoading, error, isConnected: !!token, login, logout: handleLogout, refresh: () => token && fetchDriveFiles(token)
+            driveItems, isLoading, error, isConnected: !!token, token, login, logout: handleLogout, refresh: () => token && fetchDriveFiles(token)
         }}>
             {children}
         </DriveContext.Provider>
