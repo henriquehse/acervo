@@ -9,6 +9,7 @@ import Home from './pages/Home'
 import SearchPage from './pages/Search'
 import Library from './pages/Library'
 import Profile from './pages/Profile'
+import PdfViewer from './components/PdfViewer'
 import './index.css'
 
 // VITE_GOOGLE_CLIENT_ID will be provided via .env
@@ -32,6 +33,7 @@ export default function App() {
               <MiniPlayer />
               <BottomNav />
               <FullPlayer />
+              <PdfViewer />
             </div>
           </PlayerProvider>
         </DriveProvider>

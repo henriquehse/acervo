@@ -10,7 +10,6 @@ export const useDrive = () => {
     return ctx
 }
 
-// These are the 4 shared folder IDs from the user's Google Drive
 const FOLDERS = {
     AUDIOBOOKS: '1-6gsrxIJVE9k4eEBVSWEnloFKZQ56_ap',
     EBOOKS: '1KgyMW0W9e_7PqYn51o36FgW-hXH54AGU',
@@ -18,68 +17,33 @@ const FOLDERS = {
     FINANCE: '1egQtgh8iZtjOG-N67QPb6yObqbUzc0hn'
 }
 
-function classifyFile(file) {
-    const mime = file.mimeType || ''
-    const parents = file.parents || []
-
-    // Type detection by mimeType first (most accurate)
-    if (mime.startsWith('audio/')) {
-        return { type: 'audiobook', color: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }
-    }
-    if (mime.startsWith('video/')) {
-        return { type: 'video-summary', color: 'linear-gradient(135deg, #dc2626 0%, #d97706 100%)' }
-    }
-    if (mime === 'application/pdf' || mime === 'application/epub+zip') {
-        // Determine if it's a finance doc or ebook by parent folder
-        if (parents.some(p => p === FOLDERS.FINANCE)) {
-            return { type: 'finance', color: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)' }
-        }
-        return { type: 'ebook', color: 'linear-gradient(135deg, #ea580c 0%, #db2777 100%)' }
-    }
-    // Google Workspace types
-    if (mime.includes('spreadsheet') || mime.includes('presentation')) {
-        return { type: 'finance', color: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)' }
-    }
-
-    // Fallback: classify by folder
-    if (parents.some(p => p === FOLDERS.AUDIOBOOKS)) {
-        return { type: 'audiobook', color: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }
-    }
-    if (parents.some(p => p === FOLDERS.EBOOKS)) {
-        return { type: 'ebook', color: 'linear-gradient(135deg, #ea580c 0%, #db2777 100%)' }
-    }
-    if (parents.some(p => p === FOLDERS.VIDEOS)) {
-        return { type: 'video-summary', color: 'linear-gradient(135deg, #dc2626 0%, #d97706 100%)' }
-    }
-    if (parents.some(p => p === FOLDERS.FINANCE)) {
-        return { type: 'finance', color: 'linear-gradient(135deg, #059669 0%, #0891b2 100%)' }
-    }
-
-    return { type: 'other', color: 'linear-gradient(135deg, #6b7280 0%, #374151 100%)' }
-}
-
-// Fetch ALL pages of files from Drive API
+// Helper to fetch all pages for a given query
 async function fetchAllFiles(query, token) {
     let allFiles = []
     let nextPageToken = null
-
     do {
         const url = new URL('https://www.googleapis.com/drive/v3/files')
         url.searchParams.set('q', query)
-        url.searchParams.set('fields', 'nextPageToken,files(id,name,mimeType,modifiedTime,thumbnailLink,webViewLink,iconLink,parents,size)')
+        url.searchParams.set('fields', 'nextPageToken,files(id,name,mimeType,modifiedTime,thumbnailLink,webViewLink,parents,size)')
         url.searchParams.set('pageSize', '1000')
-        url.searchParams.set('orderBy', 'name')
         if (nextPageToken) url.searchParams.set('pageToken', nextPageToken)
 
-        const res = await axios.get(url.toString(), {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-
-        allFiles = allFiles.concat(res.data.files || [])
-        nextPageToken = res.data.nextPageToken || null
+        try {
+            const res = await axios.get(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+            allFiles = allFiles.concat(res.data.files || [])
+            nextPageToken = res.data.nextPageToken || null
+        } catch (e) {
+            console.error('[Acervo] Error fetching chunk:', e)
+            throw e
+        }
     } while (nextPageToken)
-
     return allFiles
+}
+
+// Extract max res image from thumbnail
+function getHighResThumb(thumbnailLink) {
+    if (!thumbnailLink) return null
+    return thumbnailLink.replace(/=s\d+/, '=s1000') // force 1000px instead of 220px
 }
 
 export const DriveProvider = ({ children }) => {
@@ -103,47 +67,119 @@ export const DriveProvider = ({ children }) => {
         setError(null)
 
         try {
-            // Query all 4 folders at once
-            const query = `(
+            // 1. Fetch direct children of the 4 root folders
+            const rootQuery = `(
                 '${FOLDERS.AUDIOBOOKS}' in parents or 
                 '${FOLDERS.EBOOKS}' in parents or 
                 '${FOLDERS.VIDEOS}' in parents or 
                 '${FOLDERS.FINANCE}' in parents
             ) and trashed = false`
 
-            const files = await fetchAllFiles(query, accessToken)
-            console.log(`[Acervo] Fetched ${files.length} files from Drive`)
+            const rootFiles = await fetchAllFiles(rootQuery, accessToken)
 
-            const items = files.map(file => {
-                const { type, color } = classifyFile(file)
-                return {
-                    id: `drive-${file.id}`,
-                    driveId: file.id,
-                    title: file.name.replace(/\.[^/.]+$/, ''),
-                    filename: file.name,
-                    author: 'Minha Biblioteca',
-                    type,
-                    mimeType: file.mimeType,
-                    coverGradient: color,
-                    thumbnail: file.thumbnailLink || null,
-                    webViewLink: file.webViewLink || null,
-                    modifiedTime: file.modifiedTime,
-                    size: file.size || null,
+            // 2. Separate folders from standalone files
+            const subFolders = rootFiles.filter(f => f.mimeType === 'application/vnd.google-apps.folder')
+            let subFiles = []
+
+            // 3. Fetch contents of those subfolders
+            if (subFolders.length > 0) {
+                const CHUNK_SIZE = 30
+                for (let i = 0; i < subFolders.length; i += CHUNK_SIZE) {
+                    const chunk = subFolders.slice(i, i + CHUNK_SIZE)
+                    const parentsQ = chunk.map(sf => `'${sf.id}' in parents`).join(' or ')
+                    const subQ = `(${parentsQ}) and trashed = false`
+                    const chunkFiles = await fetchAllFiles(subQ, accessToken)
+                    subFiles = subFiles.concat(chunkFiles)
+                }
+            }
+
+            // 4. Combine and group into an intelligent library!
+            const items = []
+
+            // Map subfolders by ID so we can get their names easily
+            const folderMap = new Map()
+            subFolders.forEach(sf => folderMap.set(sf.id, sf))
+
+            // Group subfiles by parent folder
+            const groupsByFolder = {}
+            subFiles.forEach(f => {
+                const pid = f.parents?.[0]
+                if (!pid) return
+                if (!groupsByFolder[pid]) groupsByFolder[pid] = { audios: [], docs: [], images: [], videos: [] }
+
+                if (f.mimeType.startsWith('audio/')) groupsByFolder[pid].audios.push(f)
+                else if (f.mimeType.startsWith('video/')) groupsByFolder[pid].videos.push(f)
+                else if (f.mimeType.startsWith('image/')) groupsByFolder[pid].images.push(f)
+                else groupsByFolder[pid].docs.push(f)
+            })
+
+            // Process folders (Multi-track Audiobooks & Complex Folders)
+            Object.keys(groupsByFolder).forEach(folderId => {
+                const grp = groupsByFolder[folderId]
+                const folderInfo = folderMap.get(folderId) || { name: 'Pasta Desconhecida' }
+
+                // Try to find a cover image (prioritize files named cover/capa)
+                let coverImg = grp.images.find(img => img.name.match(/cover|capa|front/i))
+                if (!coverImg && grp.images.length > 0) coverImg = grp.images[0]
+                const highResCover = coverImg ? getHighResThumb(coverImg.thumbnailLink) : null
+
+                if (grp.audios.length > 0) {
+                    // Sort audio files alphabetically to construct playable tracks
+                    const sortedTracks = grp.audios.sort((a, b) => a.name.localeCompare(b.name)).map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        driveId: t.id,
+                        mimeType: t.mimeType
+                    }))
+
+                    items.push({
+                        id: `folder-${folderId}`, // unique ID for the whole audiobook
+                        isMultiTrack: true,
+                        driveId: sortedTracks[0].driveId, // First track fallback
+                        tracks: sortedTracks,
+                        title: folderInfo.name,
+                        author: 'Meu Drive',
+                        type: 'audiobook',
+                        thumbnail: highResCover,
+                        coverGradient: highResCover ? null : 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)'
+                    })
                 }
             })
 
-            setDriveItems(items)
-            console.log('[Acervo] Classified items:', {
-                audiobooks: items.filter(i => i.type === 'audiobook').length,
-                ebooks: items.filter(i => i.type === 'ebook').length,
-                videos: items.filter(i => i.type === 'video-summary').length,
-                finance: items.filter(i => i.type === 'finance').length,
+            // Process loose files (Single-track items, standalone PDFs)
+            const looseFiles = rootFiles.filter(f => f.mimeType !== 'application/vnd.google-apps.folder')
+            looseFiles.forEach(f => {
+                const highResThumb = getHighResThumb(f.thumbnailLink)
+
+                let type = 'other'
+                let color = 'linear-gradient(135deg, #6b7280 0%, #374151 100%)'
+
+                if (f.mimeType.startsWith('audio/')) { type = 'audiobook'; color = 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }
+                else if (f.mimeType.startsWith('video/')) { type = 'video-summary'; color = 'linear-gradient(135deg, #dc2626 0%, #d97706 100%)' }
+                else if (f.mimeType === 'application/pdf' || f.mimeType === 'application/epub+zip') {
+                    if (f.parents?.includes(FOLDERS.FINANCE)) { type = 'finance'; color = 'linear-gradient(135deg, #059669 0%, #0891b2 100%)' }
+                    else { type = 'ebook'; color = 'linear-gradient(135deg, #ea580c 0%, #db2777 100%)' }
+                }
+
+                items.push({
+                    id: `file-${f.id}`,
+                    isMultiTrack: false,
+                    driveId: f.id,
+                    title: f.name.replace(/\.[^/.]+$/, ''),
+                    author: 'Meu Drive',
+                    type,
+                    mimeType: f.mimeType,
+                    webViewLink: f.webViewLink,
+                    thumbnail: highResThumb,
+                    coverGradient: highResThumb ? null : color
+                })
             })
+
+            console.log(`[Acervo Smart Drive] Loaded ${items.length} intelligent items (folders combined).`)
+            setDriveItems(items)
         } catch (err) {
             console.error('[Acervo] Drive fetch error:', err?.response?.data || err.message)
             if (err?.response?.status === 401) {
-                // Token expired - clear it so user can re-login
-                console.warn('[Acervo] Token expired, logging out')
                 setError('Sessão expirada. Por favor, reconecte o Google Drive.')
                 handleLogout()
             } else {
@@ -169,11 +205,8 @@ export const DriveProvider = ({ children }) => {
         scope: 'https://www.googleapis.com/auth/drive.readonly',
     })
 
-    // On mount: try to use stored token
     useEffect(() => {
-        if (token) {
-            fetchDriveFiles(token)
-        }
+        if (token) fetchDriveFiles(token)
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const refresh = useCallback(() => {
@@ -182,15 +215,8 @@ export const DriveProvider = ({ children }) => {
 
     return (
         <DriveContext.Provider value={{
-            login,
-            logout: handleLogout,
-            refresh,
-            driveItems,
-            isLoading,
-            error,
-            isConnected: !!token,
-            token,
-            folders: FOLDERS,
+            login, logout: handleLogout, refresh, driveItems, isLoading, error,
+            isConnected: !!token, token, folders: FOLDERS,
         }}>
             {children}
         </DriveContext.Provider>
