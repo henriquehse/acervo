@@ -26,6 +26,8 @@ async function fetchAllFiles(query, token) {
         url.searchParams.set('q', query)
         url.searchParams.set('fields', 'nextPageToken,files(id,name,mimeType,modifiedTime,thumbnailLink,webViewLink,parents,size)')
         url.searchParams.set('pageSize', '1000') // Max per page
+        url.searchParams.set('supportsAllDrives', 'true') // REQUIRED FOR SHARED CONTENT
+        url.searchParams.set('includeItemsFromAllDrives', 'true') // REQUIRED FOR SHARED CONTENT
         if (nextPageToken) url.searchParams.set('pageToken', nextPageToken)
 
         try {
