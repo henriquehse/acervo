@@ -1,439 +1,192 @@
-import { useState, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
 import { usePlayer } from '../contexts/PlayerContext'
-import { formatTime, formatDuration, getProgressPercent } from '../utils/helpers'
-import BookCover from './BookCover'
+import { formatTime } from '../utils/helpers'
+import { SPEED_OPTIONS } from '../utils/data'
 import {
     ChevronDown, Play, Pause, SkipBack, SkipForward,
-    Repeat, Repeat1, Shuffle, Bookmark, BookmarkCheck,
-    Moon, List, Volume2, VolumeX, Share2, MoreVertical, Clock
+    FastForward, Rewind, Volume2, VolumeX, Moon, BookMarked,
+    ListMusic, Repeat, Repeat1
 } from 'lucide-react'
-import './FullPlayer.css'
 
 export default function FullPlayer() {
     const {
-        currentItem, isPlaying, currentTime, duration, speed,
-        isFullPlayer, currentChapter, bookmarks, repeatMode,
-        togglePlay, seekTo, seekRelative, cycleSpeed, setPlaybackSpeed,
-        setIsFullPlayer, skipForward, skipBackward, addBookmark,
-        toggleRepeat, setSleepTimer, volume, setVolume, isMuted, toggleMute
+        currentItem, currentTrackIndex, isPlaying, currentTime, duration,
+        speed, volume, isMuted, isFullPlayer, sleepTimer, repeatMode,
+        playNextTrack, playPrevTrack, togglePlay, seekTo, seekRelative,
+        cycleSpeed, setVolume, toggleMute, setIsFullPlayer, setSleepTimer,
+        addBookmark, toggleRepeat
     } = usePlayer()
 
     const [showChapters, setShowChapters] = useState(false)
-    const [showSpeed, setShowSpeed] = useState(false)
-    const [showSleep, setShowSleep] = useState(false)
-    const [bookmarkFeedback, setBookmarkFeedback] = useState(false)
-    const progressRef = useRef(null)
-    const isDragging = useRef(false)
 
-    const progress = getProgressPercent(currentTime, duration)
+    if (!isFullPlayer || !currentItem) return null
 
-    const handleProgressInteraction = useCallback((e) => {
-        if (!progressRef.current) return
-        const rect = progressRef.current.getBoundingClientRect()
-        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
-        const pct = Math.max(0, Math.min(1, x / rect.width))
-        seekTo(pct * duration)
-    }, [duration, seekTo])
-
-    const handleProgressStart = (e) => {
-        isDragging.current = true
-        handleProgressInteraction(e)
-    }
-
-    const handleProgressMove = (e) => {
-        if (isDragging.current) handleProgressInteraction(e)
-    }
-
-    const handleProgressEnd = () => {
-        isDragging.current = false
-    }
-
-    const handleBookmark = () => {
-        addBookmark()
-        setBookmarkFeedback(true)
-        setTimeout(() => setBookmarkFeedback(false), 1500)
-    }
-
-    if (!currentItem || !isFullPlayer) return null
-
-    const isBookmarked = bookmarks.some(b => b.itemId === currentItem.id && Math.abs(b.time - currentTime) < 5)
-
-    const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
-    const sleepOptions = [
-        { label: '15 min', value: 15 },
-        { label: '30 min', value: 30 },
-        { label: '45 min', value: 45 },
-        { label: '1 hora', value: 60 },
-        { label: '2 horas', value: 120 },
-        { label: 'Fim do capítulo', value: -1 },
-    ]
+    const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0
+    const hasNextTrack = currentItem.isMultiTrack && currentTrackIndex < currentItem.tracks.length - 1
+    const hasPrevTrack = currentItem.isMultiTrack && currentTrackIndex > 0
 
     return (
-        <AnimatePresence>
-            <motion.div
-                className="full-player"
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                id="full-player"
-            >
-                {/* Background blur from cover gradient */}
-                <div
-                    className="full-player__bg"
-                    style={{ background: currentItem.coverGradient }}
-                />
-                <div className="full-player__overlay" />
+        <div className="fixed inset-0 z-50 bg-[#e6e2d8] flex flex-col pt-[max(20px,env(safe-area-inset-top))] h-dvh animate-in slide-in-from-bottom duration-300">
+            {/* Header */}
+            <header className="flex items-center justify-between px-6 py-4">
+                <button onClick={() => setIsFullPlayer(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-black/5 active:bg-black/10 transition-colors">
+                    <ChevronDown size={28} className="text-black/70" />
+                </button>
+                <div className="flex flex-col items-center">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-black/50">Reproduzindo</span>
+                    <span className="text-sm font-semibold text-black/90 w-48 text-center truncate">
+                        {currentItem.title}
+                    </span>
+                </div>
+                <button
+                    onClick={() => setShowChapters(!showChapters)}
+                    className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${showChapters ? 'bg-primary text-white' : 'bg-black/5 text-black/70'}`}
+                >
+                    <ListMusic size={20} />
+                </button>
+            </header>
 
-                {/* Header */}
-                <div className="full-player__header">
-                    <button
-                        className="full-player__btn-icon"
-                        onClick={() => setIsFullPlayer(false)}
-                        aria-label="Minimizar player"
-                        id="full-player-minimize"
-                    >
-                        <ChevronDown size={28} />
-                    </button>
-                    <div className="full-player__header-info">
-                        <p className="full-player__header-label">REPRODUZINDO</p>
-                        <p className="full-player__header-chapter">
-                            {currentChapter?.title || currentItem.title}
-                        </p>
+            {/* Chapters Panel (Optional Overlay) */}
+            {showChapters && currentItem.isMultiTrack && (
+                <div className="absolute top-[80px] inset-x-4 bg-white rounded-3xl p-4 shadow-2xl z-10 max-h-[60vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-lg">Faixas do Livro</h3>
+                        <span className="text-xs bg-muted px-2 py-1 rounded-full">{currentItem.tracks.length}</span>
                     </div>
-                    <button
-                        className="full-player__btn-icon"
-                        aria-label="Mais opções"
-                        id="full-player-more"
-                    >
-                        <MoreVertical size={22} />
-                    </button>
+                    {currentItem.tracks.map((t, idx) => (
+                        <div
+                            key={t.id}
+                            className={`p-3 rounded-xl mb-2 cursor-pointer transition flex items-center gap-3 ${idx === currentTrackIndex ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-black/5'}`}
+                        >
+                            <span className="text-xs opacity-50 w-6 text-center">{idx + 1}</span>
+                            <span className="truncate flex-1 text-sm">{t.name}</span>
+                            {idx === currentTrackIndex && isPlaying && <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col items-center justify-center px-8 relative">
+                {/* Book Cover */}
+                <div className="w-full max-w-[280px] aspect-square rounded-2xl shadow-2xl overflow-hidden bg-white mb-8 transition-transform duration-500 hover:scale-[1.02]">
+                    {currentItem.thumbnail ? (
+                        <img src={currentItem.thumbnail} className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center p-6 text-white text-center font-bold text-xl" style={{ background: currentItem.coverGradient || 'var(--primary)' }}>
+                            {currentItem.title}
+                        </div>
+                    )}
                 </div>
 
-                {/* Cover Art */}
-                <div className="full-player__cover-area">
-                    <motion.div
-                        className="full-player__cover-wrapper"
-                        animate={{
-                            scale: isPlaying ? 1 : 0.92,
-                        }}
-                        transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-                    >
-                        <div className="full-player__cover-shadow" style={{ background: currentItem.coverGradient }} />
-                        <BookCover item={currentItem} size="full" />
-                    </motion.div>
-                </div>
-
-                {/* Track Info */}
-                <div className="full-player__track-info">
-                    <div className="full-player__track-text">
-                        <h2 className="full-player__title">{currentItem.title}</h2>
-                        <p className="full-player__author">{currentItem.author}</p>
-                    </div>
-                    <button
-                        className={`full-player__btn-icon ${bookmarkFeedback || isBookmarked ? 'full-player__btn-icon--active' : ''}`}
-                        onClick={handleBookmark}
-                        aria-label="Adicionar marcador"
-                        id="full-player-bookmark"
-                    >
-                        {bookmarkFeedback || isBookmarked ? <BookmarkCheck size={22} /> : <Bookmark size={22} />}
-                    </button>
+                {/* Info */}
+                <div className="w-full text-center px-4 mb-8">
+                    <h2 className="text-2xl font-black text-black/90 mb-2 truncate">
+                        {currentItem.title}
+                    </h2>
+                    <p className="text-lg font-medium text-black/60 truncate">
+                        {currentItem.isMultiTrack ? currentItem.tracks[currentTrackIndex].name : currentItem.author || 'Drive'}
+                    </p>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="full-player__progress-area">
-                    <div
-                        className="full-player__progress-track"
-                        ref={progressRef}
-                        onMouseDown={handleProgressStart}
-                        onMouseMove={handleProgressMove}
-                        onMouseUp={handleProgressEnd}
-                        onMouseLeave={handleProgressEnd}
-                        onTouchStart={handleProgressStart}
-                        onTouchMove={handleProgressMove}
-                        onTouchEnd={handleProgressEnd}
-                        role="slider"
-                        aria-label="Progresso"
-                        aria-valuenow={Math.round(progress)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                    >
-                        <div className="full-player__progress-fill" style={{ width: `${progress}%` }}>
-                            <div className="full-player__progress-thumb" />
-                        </div>
+                <div className="w-full max-w-sm mb-8 px-4">
+                    <div className="relative h-2.5 bg-black/10 rounded-full mb-3 cursor-pointer group" onClick={e => {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                        seekTo(percent * duration)
+                    }}>
+                        <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all duration-150" style={{ width: `${progressPercent}%` }}></div>
+                        {/* Custom Dot Handler */}
+                        <div className="absolute top-1/2 -mt-2.5 w-5 h-5 bg-white rounded-full shadow-md border border-black/5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ left: `calc(${progressPercent}% - 10px)` }} />
                     </div>
-                    <div className="full-player__time">
+
+                    <div className="flex justify-between items-center text-xs font-semibold text-black/50 font-mono tracking-wider">
                         <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(duration - currentTime)}</span>
+                        <span>-{formatTime(duration - currentTime)}</span>
                     </div>
                 </div>
 
-                {/* Main Controls */}
-                <div className="full-player__controls">
+                {/* Controls */}
+                <div className="flex items-center justify-center gap-6 mb-10 w-full max-w-sm">
+                    {/* Previous Track / Rewind */}
                     <button
-                        className="full-player__btn-icon"
-                        onClick={() => setShowSpeed(true)}
-                        aria-label="Velocidade"
-                        id="full-player-speed"
+                        onClick={() => hasPrevTrack ? playPrevTrack() : seekRelative(-10)}
+                        className="w-14 h-14 flex items-center justify-center rounded-full text-black/80 hover:bg-black/5 transition active:scale-95"
                     >
-                        <span className="full-player__speed-label">{speed}x</span>
+                        {hasPrevTrack ? <SkipBack size={28} /> : <Rewind size={28} />}
                     </button>
 
+                    {/* Play/Pause */}
                     <button
-                        className="full-player__btn-control"
-                        onClick={skipBackward}
-                        aria-label="Capítulo anterior"
-                        id="full-player-prev"
-                    >
-                        <SkipBack size={28} fill="currentColor" />
-                    </button>
-
-                    <button
-                        className="full-player__btn-control full-player__btn-seek"
-                        onClick={() => seekRelative(-15)}
-                        aria-label="Voltar 15 segundos"
-                        id="full-player-rewind"
-                    >
-                        <span className="full-player__seek-num">15</span>
-                        <svg className="full-player__seek-icon" viewBox="0 0 24 24" width="32" height="32">
-                            <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor" />
-                        </svg>
-                    </button>
-
-                    <button
-                        className="full-player__btn-play"
                         onClick={togglePlay}
-                        aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
-                        id="full-player-play"
+                        className="w-20 h-20 flex items-center justify-center bg-primary text-white rounded-full shadow-xl hover:scale-105 active:scale-95 transition-all outline-none ring-4 ring-primary/20"
                     >
-                        <motion.div
-                            key={isPlaying ? 'pause' : 'play'}
-                            initial={{ scale: 0.5, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ type: 'spring', damping: 15, stiffness: 300 }}
-                        >
-                            {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
-                        </motion.div>
+                        {isPlaying ? <Pause size={36} className="fill-white" /> : <Play size={36} className="fill-white ml-2" />}
                     </button>
 
+                    {/* Next Track / Fast Forward */}
                     <button
-                        className="full-player__btn-control full-player__btn-seek"
-                        onClick={() => seekRelative(30)}
-                        aria-label="Avançar 30 segundos"
-                        id="full-player-forward"
+                        onClick={() => hasNextTrack ? playNextTrack() : seekRelative(10)}
+                        className="w-14 h-14 flex items-center justify-center rounded-full text-black/80 hover:bg-black/5 transition active:scale-95"
                     >
-                        <span className="full-player__seek-num">30</span>
-                        <svg className="full-player__seek-icon full-player__seek-icon--forward" viewBox="0 0 24 24" width="32" height="32">
-                            <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" fill="currentColor" />
-                        </svg>
+                        {hasNextTrack ? <SkipForward size={28} /> : <FastForward size={28} />}
+                    </button>
+                </div>
+
+                {/* Secondary Controls Row */}
+                <div className="w-full max-w-sm flex items-center justify-between pb-8 pt-4 border-t border-black/10 px-4">
+                    {/* Speed Control */}
+                    <button
+                        onClick={cycleSpeed}
+                        className="flex flex-col items-center gap-1.5 text-black/60 hover:text-black/90 transition"
+                    >
+                        <div className="h-8 flex items-center justify-center px-3 rounded-full bg-black/5 font-bold text-xs tracking-wider">
+                            {speed}x
+                        </div>
+                        <span className="text-[10px] font-semibold uppercase">Veloc.</span>
                     </button>
 
+                    {/* Sleep Timer */}
                     <button
-                        className="full-player__btn-control"
-                        onClick={skipForward}
-                        aria-label="Próximo capítulo"
-                        id="full-player-next"
+                        onClick={() => {
+                            const opts = [null, 15, 30, 60]
+                            const cIdx = opts.indexOf(sleepTimer)
+                            setSleepTimer(opts[(cIdx + 1) % opts.length])
+                        }}
+                        className={`flex flex-col items-center gap-1.5 transition ${sleepTimer ? 'text-primary' : 'text-black/60 hover:text-black/90'}`}
                     >
-                        <SkipForward size={28} fill="currentColor" />
+                        <div className={`w-8 h-8 flex items-center justify-center rounded-full ${sleepTimer ? 'bg-primary/20 text-primary' : 'bg-black/5'}`}>
+                            {sleepTimer ? <span className="text-xs font-bold">{sleepTimer}m</span> : <Moon size={18} />}
+                        </div>
+                        <span className="text-[10px] font-semibold uppercase">Timer</span>
                     </button>
 
+                    {/* Add Bookmark */}
                     <button
-                        className={`full-player__btn-icon ${repeatMode !== 'off' ? 'full-player__btn-icon--active' : ''}`}
+                        onClick={() => { addBookmark(); /* Optional: Show toast */ }}
+                        className="flex flex-col items-center gap-1.5 text-black/60 hover:text-black/90 transition"
+                    >
+                        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5">
+                            <BookMarked size={18} />
+                        </div>
+                        <span className="text-[10px] font-semibold uppercase">Marcar</span>
+                    </button>
+
+                    {/* Repeat */}
+                    <button
                         onClick={toggleRepeat}
-                        aria-label="Repetir"
-                        id="full-player-repeat"
+                        className={`flex flex-col items-center gap-1.5 transition ${repeatMode !== 'off' ? 'text-primary' : 'text-black/60 hover:text-black/90'}`}
                     >
-                        {repeatMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
+                        <div className={`w-8 h-8 flex items-center justify-center rounded-full ${repeatMode !== 'off' ? 'bg-primary/20 text-primary' : 'bg-black/5'}`}>
+                            {repeatMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
+                        </div>
+                        <span className="text-[10px] font-semibold uppercase">{repeatMode === 'off' ? 'Repetir' : repeatMode.toUpperCase()}</span>
                     </button>
+
                 </div>
+            </div>
 
-                {/* Bottom Actions */}
-                <div className="full-player__actions">
-                    <button
-                        className="full-player__action-btn"
-                        onClick={() => setShowChapters(true)}
-                        id="full-player-chapters"
-                    >
-                        <List size={18} />
-                        <span>Capítulos</span>
-                    </button>
-                    <button
-                        className="full-player__action-btn"
-                        onClick={() => setShowSleep(true)}
-                        id="full-player-sleep"
-                    >
-                        <Moon size={18} />
-                        <span>Timer</span>
-                    </button>
-                    <button
-                        className="full-player__action-btn"
-                        onClick={toggleMute}
-                        id="full-player-mute"
-                    >
-                        {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                        <span>{isMuted ? 'Mudo' : 'Som'}</span>
-                    </button>
-                    <button className="full-player__action-btn" id="full-player-share">
-                        <Share2 size={18} />
-                        <span>Compartilhar</span>
-                    </button>
-                </div>
-
-                {/* Chapters Sheet */}
-                <AnimatePresence>
-                    {showChapters && (
-                        <motion.div
-                            className="full-player__sheet-overlay"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setShowChapters(false)}
-                        >
-                            <motion.div
-                                className="full-player__sheet"
-                                initial={{ y: '100%' }}
-                                animate={{ y: 0 }}
-                                exit={{ y: '100%' }}
-                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="full-player__sheet-handle" />
-                                <h3 className="full-player__sheet-title">Capítulos</h3>
-                                <div className="full-player__chapter-list">
-                                    {currentItem.chapters?.map((ch) => {
-                                        const isActive = currentChapter?.id === ch.id
-                                        return (
-                                            <button
-                                                key={ch.id}
-                                                className={`full-player__chapter-item ${isActive ? 'full-player__chapter-item--active' : ''}`}
-                                                onClick={() => {
-                                                    seekTo(ch.start)
-                                                    setShowChapters(false)
-                                                }}
-                                            >
-                                                <div className="full-player__chapter-info">
-                                                    <span className="full-player__chapter-num">{ch.id}</span>
-                                                    <span className="full-player__chapter-name">{ch.title}</span>
-                                                </div>
-                                                <span className="full-player__chapter-dur">
-                                                    {formatDuration(ch.end - ch.start)}
-                                                </span>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Speed Sheet */}
-                <AnimatePresence>
-                    {showSpeed && (
-                        <motion.div
-                            className="full-player__sheet-overlay"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setShowSpeed(false)}
-                        >
-                            <motion.div
-                                className="full-player__sheet full-player__sheet--compact"
-                                initial={{ y: '100%' }}
-                                animate={{ y: 0 }}
-                                exit={{ y: '100%' }}
-                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="full-player__sheet-handle" />
-                                <h3 className="full-player__sheet-title">Velocidade de Reprodução</h3>
-                                <div className="full-player__speed-grid">
-                                    {speedOptions.map((s) => (
-                                        <button
-                                            key={s}
-                                            className={`full-player__speed-option ${speed === s ? 'full-player__speed-option--active' : ''}`}
-                                            onClick={() => {
-                                                setPlaybackSpeed(s)
-                                                setShowSpeed(false)
-                                            }}
-                                        >
-                                            {s}x
-                                        </button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Sleep Timer Sheet */}
-                <AnimatePresence>
-                    {showSleep && (
-                        <motion.div
-                            className="full-player__sheet-overlay"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setShowSleep(false)}
-                        >
-                            <motion.div
-                                className="full-player__sheet full-player__sheet--compact"
-                                initial={{ y: '100%' }}
-                                animate={{ y: 0 }}
-                                exit={{ y: '100%' }}
-                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="full-player__sheet-handle" />
-                                <h3 className="full-player__sheet-title">
-                                    <Clock size={20} />
-                                    Timer de Sono
-                                </h3>
-                                <div className="full-player__sleep-list">
-                                    {sleepOptions.map((opt) => (
-                                        <button
-                                            key={opt.value}
-                                            className="full-player__sleep-option"
-                                            onClick={() => {
-                                                setSleepTimer(opt.value)
-                                                setShowSleep(false)
-                                            }}
-                                        >
-                                            <Moon size={16} />
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                    <button
-                                        className="full-player__sleep-option full-player__sleep-option--cancel"
-                                        onClick={() => {
-                                            setSleepTimer(null)
-                                            setShowSleep(false)
-                                        }}
-                                    >
-                                        Desativar Timer
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Bookmark Feedback Toast */}
-                <AnimatePresence>
-                    {bookmarkFeedback && (
-                        <motion.div
-                            className="full-player__toast"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
-                        >
-                            <BookmarkCheck size={16} />
-                            Marcador adicionado!
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </motion.div>
-        </AnimatePresence>
+        </div>
     )
 }

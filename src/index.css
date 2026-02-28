@@ -1,304 +1,37 @@
-/* ============================================
-   ACERVO - Design System
-   Premium Audiobook & E-book Player
-   ============================================ */
+@import "tailwindcss";
 
-:root {
-  /* Colors - Light Beige / Recycled Paper Theme */
-  --bg-primary: #f5f2eb;
-  --bg-secondary: #ebe5d9;
-  --bg-tertiary: #e0d6c8;
-  --bg-card: #fcfbfa;
-  --bg-card-hover: #ede8dc;
-  --bg-glass: rgba(245, 242, 235, 0.85);
-  --bg-glass-light: rgba(0, 0, 0, 0.04);
+@theme {
+  --color-background: #f7f3eb;
+  --color-foreground: #2d2a26;
 
-  --text-primary: #3d3935;
-  --text-secondary: #6e6760;
-  --text-muted: #968e85;
-  --text-accent: #ab7a54;
+  --color-card: #ffffff;
+  --color-card-foreground: #2d2a26;
 
-  --accent-primary: #d46a43;
-  --accent-primary-light: #e88966;
-  --accent-secondary: #42755e;
-  --accent-gradient: linear-gradient(135deg, #d46a43 0%, #42755e 100%);
-  --accent-gradient-warm: linear-gradient(135deg, #c2694b 0%, #a14c30 100%);
-  --accent-glow: rgba(212, 106, 67, 0.2);
-  --accent-glow-cyan: rgba(66, 117, 94, 0.15);
+  --color-primary: #d46a43;
+  --color-primary-foreground: #ffffff;
 
-  --success: #10b981;
-  --warning: #db7b00;
-  --error: #ef4444;
+  --color-muted: #e6e2d8;
+  --color-muted-foreground: #736d64;
 
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --border-accent: rgba(212, 106, 67, 0.3);
-
-  /* Spacing */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-2xl: 48px;
-  --space-3xl: 64px;
-
-  /* Typography */
-  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: 'Space Grotesk', 'Inter', sans-serif;
-
-  /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
-
-  /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.15);
-  --shadow-glow-strong: 0 0 60px rgba(139, 92, 246, 0.25);
-
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
-
-  /* Player bar height */
-  --player-bar-height: 80px;
-  --bottom-nav-height: 64px;
+  --color-border: #e6e2d8;
+  --radius: 0.75rem;
 }
 
-/* Reset & Base */
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-}
-
-body {
-  font-family: var(--font-primary);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-  min-height: 100dvh;
-  line-height: 1.5;
-  overflow-x: hidden;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-#root {
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: inherit;
-  color: inherit;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-input,
-textarea {
-  font-family: inherit;
-  outline: none;
-  border: none;
-  background: none;
-  color: inherit;
-}
-
-img {
-  display: block;
-  max-width: 100%;
-}
-
-ul,
-ol {
-  list-style: none;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-full);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary);
-}
-
-/* Utility classes */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0; 0; 0; 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@keyframes vinylSpin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn var(--transition-base) forwards;
-}
-
-.animate-slideUp {
-  animation: slideUp var(--transition-slow) forwards;
-}
-
-/* Media query for PWA standalone mode */
-@media (display-mode: standalone) {
+@layer base {
   body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    @apply font-sans antialiased overflow-x-hidden pb-32;
   }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }

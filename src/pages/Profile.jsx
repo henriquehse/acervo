@@ -2,118 +2,125 @@ import { usePlayer } from '../contexts/PlayerContext'
 import { useDrive } from '../contexts/DriveContext'
 import { ALL_ITEMS } from '../utils/data'
 import { formatTime } from '../utils/helpers'
-import { LogOut, Settings, Bell, HelpCircle, Bookmark, Clock, ChevronRight, Headphones, BookOpen, Zap, Database, RefreshCw, AlertCircle } from 'lucide-react'
-import './Profile.css'
+import { LogOut, Settings, Bell, HelpCircle, Bookmark, Clock, ChevronRight, Headphones, BookOpen, Zap, Database, RefreshCw, AlertCircle, Loader2 } from 'lucide-react'
 
 export default function Profile() {
     const { bookmarks } = usePlayer()
     const { login, logout, isConnected, driveItems, isLoading, error, refresh } = useDrive()
 
     const stats = {
-        total: ALL_ITEMS.length + (isConnected ? driveItems.length : 0),
-        audiobooks: ALL_ITEMS.filter(i => i.type === 'audiobook').length + (isConnected ? driveItems.filter(i => i.type === 'audiobook').length : 0),
-        ebooks: ALL_ITEMS.filter(i => i.type === 'ebook').length + (isConnected ? driveItems.filter(i => i.type === 'ebook').length : 0),
+        total: ALL_ITEMS.length + driveItems.length,
+        audiobooks: ALL_ITEMS.filter(i => i.type === 'audiobook').length + driveItems.filter(i => i.type === 'audiobook').length,
+        ebooks: ALL_ITEMS.filter(i => i.type === 'ebook').length + driveItems.filter(i => i.type === 'ebook').length,
         listening: ALL_ITEMS.filter(i => i.currentTime > 0).length,
     }
 
     return (
-        <div className="profile" id="profile-page">
-            <header className="profile__header">
-                <h1 className="profile__title">Perfil</h1>
+        <div className="w-full max-w-4xl mx-auto px-5 pt-8 pb-32 animate-in fade-in duration-500">
+            <header className="mb-8">
+                <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Perfil</h1>
             </header>
 
             {/* User Card */}
-            <div className="profile__user-card">
-                <div className="profile__avatar">
-                    <span>HS</span>
-                </div>
-                <div className="profile__user-info">
-                    <h2 className="profile__user-name">Henrique Santos</h2>
-                    <p className="profile__user-email">henriquehse2015@gmail.com</p>
-                </div>
-                {!isConnected ? (
-                    <button className="profile__connect-btn" onClick={() => login()}>
-                        <Database size={16} />
-                        <span>Conectar Drive</span>
-                    </button>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                        <button className="profile__connect-btn profile__connect-btn--active" onClick={() => logout()}>
-                            <Database size={16} />
-                            <span>Drive Conectado</span>
-                        </button>
-                        <button onClick={refresh} style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', background: 'none', cursor: 'pointer' }}>
-                            <RefreshCw size={12} /> Sincronizar
-                        </button>
+            <div className="bg-card border border-border rounded-2xl p-5 mb-8 shadow-sm">
+                <div className="flex items-center gap-4 mb-5">
+                    <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl shadow-md shrink-0">
+                        HS
                     </div>
-                )}
+                    <div>
+                        <h2 className="text-lg font-bold text-foreground">Henrique Santos</h2>
+                        <p className="text-sm text-muted-foreground">henriquehse2015@gmail.com</p>
+                    </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-border">
+                    {!isConnected ? (
+                        <button
+                            className="flex items-center gap-2 bg-foreground text-background px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:opacity-90 transition"
+                            onClick={() => login()}
+                        >
+                            <Database size={16} />
+                            Conectar Drive
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={refresh}
+                                disabled={isLoading}
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition bg-muted/50 px-3 py-1.5 rounded-full disabled:opacity-50"
+                            >
+                                <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+                                {isLoading ? 'Sincronizando...' : 'Sincronizar'}
+                            </button>
+                            <button
+                                className="flex items-center gap-2 bg-[#e8f5e9] text-[#2e7d32] px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:opacity-90 transition border border-[#c8e6c9]"
+                                onClick={() => logout()}
+                            >
+                                <Database size={16} />
+                                Desconectar
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Drive error banner */}
+            {/* Drive Error Banner */}
             {error && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#dc2626' }}>
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
-                    <button onClick={() => login()} style={{ marginLeft: 'auto', fontWeight: 600, cursor: 'pointer', color: '#dc2626', background: 'none' }}>Reconectar</button>
-                </div>
-            )}
-
-            {/* Loading indicator */}
-            {isLoading && (
-                <div style={{ textAlign: 'center', padding: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    Sincronizando com o Drive...
+                <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 animate-in slide-in-from-top-2">
+                    <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                    <div className="flex-1">
+                        <p className="font-semibold text-sm">Problema de Conexão</p>
+                        <p className="text-xs mt-1 opacity-90">{error}</p>
+                    </div>
+                    <button onClick={() => login()} className="text-xs font-bold bg-white px-3 py-1.5 rounded-full shadow-sm hover:bg-red-50 transition border border-red-100">
+                        Reconectar
+                    </button>
                 </div>
             )}
 
             {/* Stats */}
-            <div className="profile__stats">
-                <div className="profile__stat">
-                    <div className="profile__stat-icon profile__stat-icon--purple">
-                        <Headphones size={18} />
+            <div className="grid grid-cols-3 gap-3 mb-8">
+                <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-2">
+                        <Headphones size={20} />
                     </div>
-                    <div className="profile__stat-info">
-                        <span className="profile__stat-value">{stats.audiobooks}</span>
-                        <span className="profile__stat-label">Audiobooks</span>
-                    </div>
+                    <span className="text-xl font-black text-foreground">{stats.audiobooks}</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mt-1">Áudio</span>
                 </div>
-                <div className="profile__stat">
-                    <div className="profile__stat-icon profile__stat-icon--cyan">
-                        <BookOpen size={18} />
+                <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2">
+                        <BookOpen size={20} />
                     </div>
-                    <div className="profile__stat-info">
-                        <span className="profile__stat-value">{stats.ebooks}</span>
-                        <span className="profile__stat-label">E-books</span>
-                    </div>
+                    <span className="text-xl font-black text-foreground">{stats.ebooks}</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mt-1">E-books</span>
                 </div>
-                <div className="profile__stat">
-                    <div className="profile__stat-icon profile__stat-icon--amber">
-                        <Zap size={18} />
+                <div className="bg-card border border-border rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mb-2">
+                        <Zap size={20} />
                     </div>
-                    <div className="profile__stat-info">
-                        <span className="profile__stat-value">{stats.listening}</span>
-                        <span className="profile__stat-label">Em progresso</span>
-                    </div>
+                    <span className="text-xl font-black text-foreground">{stats.listening}</span>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mt-1">Em Andamento</span>
                 </div>
             </div>
 
             {/* Bookmarks */}
             {bookmarks.length > 0 && (
-                <section className="profile__section">
-                    <h3 className="profile__section-title">
-                        <Bookmark size={18} />
+                <section className="mb-10">
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        <Bookmark size={20} className="text-primary" fill="currentColor" />
                         Marcadores ({bookmarks.length})
                     </h3>
-                    <div className="profile__bookmarks">
-                        {bookmarks.map(bm => {
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                        {bookmarks.map((bm, index) => {
                             const item = ALL_ITEMS.find(i => i.id === bm.itemId)
                             return (
-                                <div key={bm.id} className="profile__bookmark-item">
-                                    <Clock size={14} />
-                                    <div className="profile__bookmark-info">
-                                        <span className="profile__bookmark-title">{item?.title}</span>
-                                        <span className="profile__bookmark-time">
-                                            {formatTime(bm.time)} • {bm.chapter}
-                                        </span>
+                                <div key={bm.id} className={`flex items-center gap-3 p-4 ${index !== bookmarks.length - 1 ? 'border-b border-border' : ''}`}>
+                                    <Clock size={16} className="text-muted-foreground shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold truncate text-foreground">{item?.title || 'Faixa Desconhecida'}</p>
+                                        <p className="text-xs text-primary font-medium mt-0.5">
+                                            {formatTime(bm.time)} {bm.chapter ? `• ${bm.chapter}` : ''}
+                                        </p>
                                     </div>
                                 </div>
                             )
@@ -123,33 +130,39 @@ export default function Profile() {
             )}
 
             {/* Menu */}
-            <div className="profile__menu">
-                <button className="profile__menu-item" id="profile-settings">
-                    <Settings size={20} />
-                    <span>Configurações</span>
-                    <ChevronRight size={16} className="profile__menu-arrow" />
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm mb-10">
+                <button className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition border-b border-border focus:outline-none text-left">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                        <Settings size={18} />
+                    </div>
+                    <span className="flex-1 font-medium text-sm text-foreground">Configurações</span>
+                    <ChevronRight size={18} className="text-muted-foreground" />
                 </button>
-                <button className="profile__menu-item" id="profile-notifications">
-                    <Bell size={20} />
-                    <span>Notificações</span>
-                    <ChevronRight size={16} className="profile__menu-arrow" />
+                <button className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition border-b border-border focus:outline-none text-left">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                        <Bell size={18} />
+                    </div>
+                    <span className="flex-1 font-medium text-sm text-foreground">Notificações</span>
+                    <ChevronRight size={18} className="text-muted-foreground" />
                 </button>
-                <button className="profile__menu-item" id="profile-help">
-                    <HelpCircle size={20} />
-                    <span>Ajuda</span>
-                    <ChevronRight size={16} className="profile__menu-arrow" />
-                </button>
-                <button className="profile__menu-item profile__menu-item--danger" id="profile-logout">
-                    <LogOut size={20} />
-                    <span>Sair</span>
-                    <ChevronRight size={16} className="profile__menu-arrow" />
+                <button className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition focus:outline-none text-left">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                        <HelpCircle size={18} />
+                    </div>
+                    <span className="flex-1 font-medium text-sm text-foreground">Ajuda</span>
+                    <ChevronRight size={18} className="text-muted-foreground" />
                 </button>
             </div>
 
-            {/* Version */}
-            <p className="profile__version">Acervo v2.0.0 • PWA</p>
+            <button className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 p-4 rounded-xl border border-red-100 font-bold transition focus:outline-none shadow-sm mb-6">
+                <LogOut size={18} />
+                Encerrar Sessão
+            </button>
 
-            <div className="profile__spacer" />
+            {/* Version */}
+            <p className="text-center text-xs font-mono text-muted-foreground opacity-60">
+                Acervo v3.0.0 Premium
+            </p>
         </div>
     )
 }
