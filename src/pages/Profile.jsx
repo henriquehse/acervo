@@ -147,7 +147,7 @@ export default function Profile() {
             </div>
 
             {/* Version */}
-            <p className="profile__version">Acervo v1.0.0 • PWA</p>
+            <p className="profile__version">Acervo v2.0.0 • PWA</p>
 
             <div className="profile__spacer" />
         </div>

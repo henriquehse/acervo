@@ -7,6 +7,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Force immediate service worker activation - no waiting
+      injectRegister: 'auto',
       includeAssets: ['favicon.svg', 'robots.txt'],
       manifest: {
         name: 'Acervo - Biblioteca Digital',
@@ -33,7 +35,13 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Skip waiting — new SW takes control immediately without user needing to close tabs
+        skipWaiting: true,
+        clientsClaim: true,
+        // Don't cache HTML — always fetch fresh so updates are instant
+        navigateFallback: null,
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff2}'],
+        // JS and CSS: network first so updates are always loaded
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -50,6 +58,11 @@ export default defineConfig({
               cacheName: 'gstatic-fonts-cache',
               expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 }
             }
+          },
+          {
+            // Google Drive API calls — never cache, always network
+            urlPattern: /^https:\/\/www\.googleapis\.com\/.*/i,
+            handler: 'NetworkOnly',
           }
         ]
       }
