@@ -26,13 +26,20 @@ declare global { interface Window { google: any } }
 
 const PLAYLISTS = [
   { key: "liked", label: "Curtidos", icon: "❤️", queries: [] as string[] },
-  { key: "estoicismo", label: "Estoicismo", icon: "🏛️", queries: ["estoicismo filosofia", "marco aurelio meditações", "estoico motivação", "ryan holiday estoicismo pt", "seneca cartas"] },
-  { key: "disciplina", label: "Disciplina", icon: "⚔️", queries: ["disciplina militar", "motivação guerreiro", "david goggins legendado", "mentalidade de ferro", "forjar o caráter"] },
-  { key: "foco", label: "Foco", icon: "🎯", queries: ["deep work", "como ter foco", "produtividade extrema", "eliminar distrações", "neurociência do foco", "huberman lab foco legendado"] },
-  { key: "redpill", label: "RedPill", icon: "💊", queries: ["desenvolvimento masculino", "masculinidade alfa", "homem de alto valor", "comportamento masculino", "Dr Lair Ribeiro"] },
-  { key: "pnl", label: "PNL", icon: "🧬", queries: ["programação neurolinguística", "persuasão e influência", "tony robbins legendado", "gatilhos mentais", "linguagem corporal"] },
-  { key: "exercicios", label: "Exercícios", icon: "🏋️", queries: ["treino calistenia", "hipertrofia", "treino militar em casa", "chris bumstead legendado", "fisiologia do exercício"] },
-  { key: "educacao", label: "Educação", icon: "📚", queries: ["inteligência artificial educação", "automação chatgpt", "futuro do trabalho", "ferramentas de IA", "como aprender mais rápido"] },
+  {
+    key: "estoicismo", label: "Estoicismo", icon: "🏛️", queries: [
+      "estoicismo filosofia prática", "marco aurelio meditações completo", "estoico motivação",
+      "ryan holiday estoicismo pt", "seneca cartas a lucílio", "epícteto manual",
+      "escola da vida estoicismo", "clojure philosophy stoicism", "como ser estoico na vida real",
+      "massimo pigliucci stoic", "daily stoic português", "a arte de viver epícteto"
+    ]
+  },
+  { key: "disciplina", label: "Disciplina", icon: "⚔️", queries: ["disciplina militar", "motivação guerreiro", "david goggins legendado", "mentalidade de ferro", "forjar o caráter", "jocko willink legendado", "andy frisella 75 hard", "disciplina é liberdade"] },
+  { key: "foco", label: "Foco", icon: "🎯", queries: ["deep work", "como ter foco", "produtividade extrema", "eliminar distrações", "neurociência do foco", "huberman lab foco legendado", "cal newport deep work", "foco absoluto técnicas"] },
+  { key: "redpill", label: "RedPill", icon: "💊", queries: ["desenvolvimento masculino", "masculinidade alfa", "homem de alto valor", "comportamento masculino", "Dr Lair Ribeiro", "redpill português", "mindset masculino", "high value man"] },
+  { key: "pnl", label: "PNL", icon: "🧬", queries: ["programação neurolinguística", "persuasão e influência", "tony robbins legendado", "gatilhos mentais", "linguagem corporal", "robert cialdini legendado", "poder da persuasão"] },
+  { key: "exercicios", label: "Exercícios", icon: "🏋️", queries: ["treino calistenia", "hipertrofia", "treino militar em casa", "chris bumstead legendado", "fisiologia do exercício", "jeff nippard legendado", "treino funcional completo"] },
+  { key: "educacao", label: "Educação", icon: "📚", queries: ["inteligência artificial educação", "automação chatgpt", "futuro do trabalho", "ferramentas de IA", "como aprender mais rápido", "memorização eficiente"] },
   {
     key: "ingles", label: "Inglês", icon: "🇺🇸", queries: [
       "speak english with tiffani", "englishclass101", "rachel's english",
@@ -40,10 +47,30 @@ const PLAYLISTS = [
       "native english podcast", "luke's english podcast", "all ears english podcast"
     ]
   },
-  { key: "dieta", label: "Dieta da Selva", icon: "🥩", queries: ["dieta carnívora", "alimentação ancestral", "paul saladino legendado", "jejum intermitente", "saúde metabólica"] },
-  { key: "mindset", label: "Mindset", icon: "🧠", queries: ["mindset de crescimento", "mente milionária", "reprogramação mental", "frequência positiva", "poder do subconsciente"] },
-  { key: "maquiavel", label: "Maquiavel", icon: "♟️", queries: ["nicolau maquiavel livro", "48 leis do poder", "arte da guerra sun tzu", "estratégia maquiavélica", "robert greene pt"] },
-  { key: "cura", label: "Cura Mental", icon: "✨", queries: ["frequência 528hz", "meditação guiada cura", "limpeza energética", "solfeggio frequencies", "binaural beats focus"] },
+  {
+    key: "dieta", label: "Dieta da Selva", icon: "🥩", queries: [
+      "dieta carnívora resultados", "alimentação ancestral como começar", "paul saladino legendado",
+      "jejum intermitente protocolo", "saúde metabólica", "dieta carnívora brasil",
+      "shawn baker carnivore", "anthony chaffee carnivore", "ken berry carnivore legendado",
+      "dieta low carb extrema resultados", "carnivore diet transformation",
+      "liver king ancestral", "nose to tail eating", "carne de órgãos benefícios"
+    ]
+  },
+  {
+    key: "medicina", label: "Medicina Natural", icon: "🩺", queries: [
+      "CardioDF", "Dr Lair Ribeiro alimentação", "cura pelo alimento",
+      "médico dieta carnívora", "medicina funcional brasil",
+      "Dr Eric Berg legendado", "Dr Jason Fung jejum legendado",
+      "alimentação como remédio", "médico saúde natural",
+      "Dr Peter Attia longevidade legendado", "Andrew Huberman saúde legendado",
+      "Dr Uronal Zancan", "Dr Gabriel Azzini saúde",
+      "nutrição funcional médico", "colesterol mito médico",
+      "dieta carnívora cardiologista", "reverter diabetes alimentação"
+    ]
+  },
+  { key: "mindset", label: "Mindset", icon: "🧠", queries: ["mindset de crescimento", "mente milionária", "reprogramação mental", "frequência positiva", "poder do subconsciente", "neuroplasticidade prática"] },
+  { key: "maquiavel", label: "Maquiavel", icon: "♟️", queries: ["nicolau maquiavel livro", "48 leis do poder", "arte da guerra sun tzu", "estratégia maqiçvélica", "robert greene pt", "o príncipe maquiavel completo", "leis do poder resumo"] },
+  { key: "cura", label: "Cura Mental", icon: "✨", queries: ["frequência 528hz", "meditação guiada cura", "limpeza energética", "solfeggio frequencies", "binaural beats focus", "theta waves healing", "432hz sleep music"] },
   {
     key: "ambiente", label: "Música Ambiente", icon: "🌧️", queries: [
       "lofi hip hop radio relax", "jazz relaxing background music", "blues background focus",
@@ -51,7 +78,7 @@ const PLAYLISTS = [
       "classic music for reading", "dark academia classical"
     ]
   },
-  { key: "podcasts", label: "Podcasts", icon: "🎙️", queries: ["podcast huberman lab legendado | lex fridman legendado", "joe rogan legendado | podcast flow", "inteligencia ltda | podcast desenvolvimento pessoal"] },
+  { key: "podcasts", label: "Podcasts", icon: "🎩️", queries: ["podcast huberman lab legendado | lex fridman legendado", "joe rogan legendado | podcast flow", "inteligencia ltda | podcast desenvolvimento pessoal"] },
   { key: "ai", label: "IA Recomenda", icon: "🤖", queries: [] as string[] },
 ];
 
@@ -438,7 +465,7 @@ export default function Home() {
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile", temperature: 0.7, max_tokens: 200,
           messages: [
-            { role: "system", content: "Você é um curador especializado em desenvolvimento pessoal masculino, estoicismo, disciplina, saúde física/mental, PNL, exercícios e educação. Sugira termos de busca YouTube para conteúdo de altíssima qualidade que ajude na cura mental, mente positiva, forja de caráter, e crescimento. Responda APENAS 5 termos de busca, um por linha, sem numeração." },
+            { role: "system", content: "Você é um curador especializado em desenvolvimento pessoal masculino, estoicismo, disciplina, saúde física/mental, PNL, exercícios, medicina natural, dieta carnívora, cura pelo alimento e educação. Analise os vídeos curtidos pelo usuário e sugira termos de busca YouTube para conteúdo de altíssima qualidade similar aos que ele já curtiu. Priorize canais médicos sobre alimentação natural, dieta carnívora/ancestral, longevidade, medicina funcional tipo @CardioDF, Dr Lair Ribeiro, Paul Saladino. Responda APENAS 5 termos de busca, um por linha, sem numeração." },
             { role: "user", content: `Baseado nestes vídeos:\n${titles}\n\nSugira 5 buscas YouTube ${isLoadMore ? "NOVAS " : ""}relacionadas e diferentes:` },
           ],
         }),

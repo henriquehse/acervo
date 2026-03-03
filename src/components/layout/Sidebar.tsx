@@ -57,6 +57,7 @@ export function Sidebar() {
         { icon: Calendar, label: 'Rotina', href: '/rotina', color: '#10B981' },
         { icon: Layout, label: 'Finance', href: '/finance', color: '#10B981' },
         { icon: Activity, label: 'Bio-Data', href: '/biodata', color: '#F43F5E' },
+        { icon: Tv, label: 'IPTV', href: '/tv', color: '#EF4444' },
         { icon: GraduationCap, label: 'Cursos', href: '/estudos', color: '#8B5CF6' },
         { icon: Languages, label: 'Idiomas', href: '/idiomas', color: '#F59E0B' },
         { icon: Video, label: 'Director AI', href: '/director', color: '#4285F4' },
