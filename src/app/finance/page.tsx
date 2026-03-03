@@ -1,4 +1,5 @@
 "use client";
+import { PageNav } from '@/components/layout/PageNav';
 
 const FONT_STYLE = `
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@100;200;300;400;500;600;700;800&display=swap');
@@ -214,8 +215,9 @@ export default function FinanceDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 font-sans selection:bg-amber-500/30 overflow-x-hidden pb-32">
+        <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 pt-16 font-sans selection:bg-amber-500/30 overflow-x-hidden pb-32">
             <style dangerouslySetInnerHTML={{ __html: FONT_STYLE }} />
+            <PageNav title="Financeiro" />
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-900/10 rounded-full blur-[120px]" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[120px]" />
@@ -223,12 +225,6 @@ export default function FinanceDashboard() {
             </div>
 
             <div className="relative z-10 max-w-[1920px] mx-auto space-y-6">
-                <div className="mb-2">
-                    <Link href="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-emerald-400 p-2 pr-4 bg-white/5 rounded-xl transition-colors shadow-lg border border-white/5 hover:border-emerald-500/30">
-                        <ArrowLeft size={18} />
-                        <span className="text-xs font-orbitron font-bold uppercase tracking-widest">Base</span>
-                    </Link>
-                </div>
                 <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-white/5 pb-8 md:pb-6 relative">
                     <div className="text-center md:text-left">
                         <div className="flex flex-col md:flex-row items-center gap-3 mb-2">

@@ -1,4 +1,5 @@
 'use client';
+import { PageNav } from '@/components/layout/PageNav';
 
 import React, { useState, useEffect } from 'react';
 
@@ -536,9 +537,10 @@ export default function RoutinePage() {
 
     return (
         <div className="flex bg-[#08080c] min-h-screen text-gray-100">
+            <PageNav title="Rotina" />
 
 
-            <div className="flex-1 px-4 md:px-8 py-6 md:py-8 flex flex-col w-full max-w-[95%] 2xl:max-w-[2400px] mx-auto pb-32">
+            <div className="flex-1 px-4 md:px-8 py-6 md:py-8 pt-14 flex flex-col w-full max-w-[95%] 2xl:max-w-[2400px] mx-auto pb-32">
                 <header className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 border-b border-white/5 pb-6 md:pb-8 gap-6 md:gap-0">
                     <div className="text-center md:text-left">
                         <div className="flex items-center justify-center md:justify-start gap-4 mb-4">

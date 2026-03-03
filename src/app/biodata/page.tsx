@@ -1,4 +1,5 @@
 'use client';
+import { PageNav } from '@/components/layout/PageNav';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -244,7 +245,8 @@ export default function BioDataPage() {
     const insights = data?.insights || [];
 
     return (
-        <div className="min-h-screen bg-[#050508] text-white overflow-x-hidden">
+        <div className="min-h-screen bg-[#050508] text-white overflow-x-hidden pt-16">
+            <PageNav title="Bio-Data" />
             {/* Global Premium Styles */}
             {/* Global Premium Styles */}
             <style jsx global>{`

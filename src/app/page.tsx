@@ -70,15 +70,41 @@ const PLAYLISTS = [
   },
   { key: "mindset", label: "Mindset", icon: "🧠", queries: ["mindset de crescimento", "mente milionária", "reprogramação mental", "frequência positiva", "poder do subconsciente", "neuroplasticidade prática"] },
   { key: "maquiavel", label: "Maquiavel", icon: "♟️", queries: ["nicolau maquiavel livro", "48 leis do poder", "arte da guerra sun tzu", "estratégia maqiçvélica", "robert greene pt", "o príncipe maquiavel completo", "leis do poder resumo"] },
-  { key: "cura", label: "Cura Mental", icon: "✨", queries: ["frequência 528hz", "meditação guiada cura", "limpeza energética", "solfeggio frequencies", "binaural beats focus", "theta waves healing", "432hz sleep music"] },
   {
-    key: "ambiente", label: "Música Ambiente", icon: "🌧️", queries: [
-      "lofi hip hop radio relax", "jazz relaxing background music", "blues background focus",
-      "cafe bossa nova jazz", "binaural beats reading focus", "chuva e lareira reading",
-      "classic music for reading", "dark academia classical"
+    key: "cura", label: "Cura Mental", icon: "✨", queries: [
+      "528hz frequency healing", "432hz deep healing music", "174hz pain relief frequency",
+      "285hz tissue healing frequency", "396hz liberation frequency guilt fear",
+      "417hz change frequency", "639hz love frequency relationships",
+      "741hz detox frequency", "852hz intuition spiritual frequency",
+      "963hz crown chakra pineal gland", "solfeggio frequencies all 9 tones",
+      "theta waves 4-8hz deep meditation", "delta waves 0.5-4hz deep sleep healing",
+      "alpha waves 8-12hz relaxation focus", "gamma waves 40hz brain power",
+      "binaural beats 528hz 10 hours", "tibetan singing bowls healing 1 hour",
+      "shamanic drumming journey healing", "rain sounds thunder deep sleep",
+      "ocean waves meditation 10 hours", "frequency healing DNA repair 528hz",
+      "meditação guiada cura profunda", "limpeza energética completa frequências",
+      "ho'oponopono meditation healing", "sound bath crystal bowls healing"
     ]
   },
-  { key: "podcasts", label: "Podcasts", icon: "🎩️", queries: ["podcast huberman lab legendado | lex fridman legendado", "joe rogan legendado | podcast flow", "inteligencia ltda | podcast desenvolvimento pessoal"] },
+  {
+    key: "ambiente", label: "Música Ambiente", icon: "🌧️", queries: [
+      "lofi hip hop radio beats to relax study", "jazz cafe background music 3 hours",
+      "blues background music relaxing", "smooth jazz saxophone 10 hours",
+      "soul music classics playlist", "neo soul chill vibes playlist",
+      "bossa nova cafe music 3 hours", "classical music for reading concentration",
+      "dark academia classical playlist", "chuva e lareira som para ler",
+      "jazz piano bar midnight", "blues guitar instrumental relaxing",
+      "R&B soul old school classics", "jazz noir detective music",
+      "ambient electronic focus music", "lo fi jazz beats studying",
+      "miles davis kind of blue full album", "john coltrane a love supreme",
+      "nina simone playlist best of", "billie holiday classics",
+      "ray charles soul music", "aretha franklin greatest hits",
+      "coffee shop ambient jazz and rain", "fireplace crackling with piano music",
+      "soft rock classics background", "acoustic guitar instrumental peaceful",
+      "cello meditation deep focus", "vinyl jazz cafe ambience"
+    ]
+  },
+  { key: "podcasts", label: "Podcasts", icon: "🎙️", queries: ["podcast huberman lab legendado | lex fridman legendado", "joe rogan legendado | podcast flow", "inteligencia ltda | podcast desenvolvimento pessoal"] },
   { key: "ai", label: "IA Recomenda", icon: "🤖", queries: [] as string[] },
 ];
 

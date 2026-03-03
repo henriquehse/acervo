@@ -2322,16 +2322,50 @@ body {
 
   .topic-chips {
     gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 8px;
+    justify-content: flex-start;
+  }
+
+  .topic-chips::-webkit-scrollbar {
+    display: none;
   }
 
   .topic-chip {
     padding: 7px 12px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .video-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .video-card.row-card {
+    min-width: 220px;
+    max-width: 220px;
+  }
+
+  .video-row-scroll.dense {
+    grid-auto-columns: 220px;
+  }
+
+  .row-arrow {
+    display: none;
+  }
+
+  .video-row-title {
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+  }
+
+  .video-rows {
+    gap: 20px;
   }
 
   .video-card {

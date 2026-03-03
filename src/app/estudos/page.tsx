@@ -1,5 +1,6 @@
 
 'use client';
+import { PageNav } from '@/components/layout/PageNav';
 
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -754,7 +755,8 @@ function EstudosContent() {
     if (!isMounted) return null;
 
     return (
-        <div className="min-h-screen w-full text-white selection:bg-purple-500/30 overflow-x-hidden relative">
+        <div className="min-h-screen w-full text-white selection:bg-purple-500/30 overflow-x-hidden relative pt-12">
+            <PageNav title="Estudos" />
             <PremiumBackground />
 
             <DocumentationModal isOpen={showDocs} onClose={() => setShowDocs(false)} />

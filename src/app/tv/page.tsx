@@ -1,4 +1,5 @@
 'use client';
+import { PageNav } from '@/components/layout/PageNav';
 
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -1166,6 +1167,7 @@ function TVPageContent() {
 
     return (
         <div className="flex h-screen w-full items-center justify-center relative bg-black overflow-hidden font-sans">
+            <PageNav title="Bunker TV" />
             {/* Dynamic Background */}
             <div className="absolute inset-0 z-0">
                 {WALLPAPERS.map((wall, idx) => (
@@ -1180,13 +1182,6 @@ function TVPageContent() {
 
             <div className="w-full max-w-md p-8 rounded-3xl bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl z-10 animate-in fade-in zoom-in duration-500">
                 <div className="text-center mb-8 relative">
-                    <button
-                        onClick={() => window.location.href = '/'}
-                        className="absolute -top-4 -left-4 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors flex items-center gap-2"
-                        title="Voltar ao Início"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
                     <div className="w-16 h-16 bg-emerald-500 rounded-2xl mx-auto flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.4)] mb-4">
                         <Tv size={32} className="text-black fill-black" />
                     </div>

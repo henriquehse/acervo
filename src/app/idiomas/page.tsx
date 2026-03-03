@@ -1,4 +1,5 @@
 'use client';
+import { PageNav } from '@/components/layout/PageNav';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -608,7 +609,8 @@ function LanguagesPageContent() {
                 onSwitch={() => router.push('/idiomas/spanish')}
             />
 
-            <main className="min-h-screen bg-[#08080c] transition-all duration-300 overflow-y-auto overflow-x-hidden pb-40 sm:pb-32">
+            <main className="min-h-screen bg-[#08080c] pt-12 transition-all duration-300 overflow-y-auto overflow-x-hidden pb-40 sm:pb-32">
+                <PageNav title="Idiomas" />
                 {/* === AMERICAN HERO SECTION === */}
                 <div className="relative overflow-hidden">
                     <div className="absolute inset-0">
