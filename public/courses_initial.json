@@ -1,0 +1,63 @@
+[
+    {
+        "id": "tiffani-beginner",
+        "title": "Speak English With Tiffani",
+        "description": "Master English with Teacher Tiffani. Natural expressions, clear explanations, and native pronunciation.",
+        "thumbnail": "https://yt3.googleusercontent.com/ytc/AIdro_nU8X5Jp0A1W4t7b6R8X6Z5p4n4n=s176-c-k-c0x00ffffff-no-rj",
+        "videoCount": 12,
+        "type": "smart_merge",
+        "gradient": "from-purple-600 to-indigo-600",
+        "videos": [
+            {
+                "id": "V-j9v8eSnyQ",
+                "title": "Stop Saying 'How are you?'",
+                "thumbnail": "https://i.ytimg.com/vi/V-j9v8eSnyQ/hqdefault.jpg",
+                "duration": "15:42",
+                "channelTitle": "Speak English With Tiffani"
+            },
+            {
+                "id": "juKd26qkNAw",
+                "title": "3 Hour English Lesson: All You Need to Speak Confidently",
+                "thumbnail": "https://i.ytimg.com/vi/juKd26qkNAw/hqdefault.jpg",
+                "duration": "3:02:11",
+                "channelTitle": "Speak English With Tiffani"
+            }
+        ]
+    },
+    {
+        "id": "english-class-101",
+        "title": "EnglishClass101",
+        "description": "The fastest, easiest, and most fun way to learn English. From absolute beginner to advanced native level.",
+        "thumbnail": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&q=80",
+        "videoCount": 20,
+        "type": "smart_merge",
+        "gradient": "from-blue-500 to-cyan-600",
+        "videos": [
+            {
+                "id": "juKd26qkNAw",
+                "title": "Learn English in 3 Hours - ALL You Need to Speak English",
+                "thumbnail": "https://i.ytimg.com/vi/juKd26qkNAw/hqdefault.jpg",
+                "duration": "3:00:00",
+                "channelTitle": "EnglishClass101"
+            }
+        ]
+    },
+    {
+        "id": "podcasts-learning",
+        "title": "English Podcasts for Immersion",
+        "description": "Listen to native speakers discussing daily topics. Perfect for intermediate and advanced learners.",
+        "thumbnail": "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=800&q=80",
+        "videoCount": 15,
+        "type": "mega_merge",
+        "gradient": "from-orange-500 to-red-600",
+        "videos": [
+            {
+                "id": "3M8rU9O0xQY",
+                "title": "English Learning Podcast",
+                "thumbnail": "https://i.ytimg.com/vi/3M8rU9O0xQY/hqdefault.jpg",
+                "duration": "25:00",
+                "channelTitle": "Native English Podcast"
+            }
+        ]
+    }
+]

@@ -1,0 +1,28 @@
+
+> acervo-web@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.5s
+  Running TypeScript ...
+Failed to compile.
+
+./src/components/estudos/BookReader.tsx:56:21
+Type error: No overload matches this call.
+  Overload 1 of 2, '(props: IReactReaderProps, context?: any): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | ... 4 more ... | undefined', gave the following error.
+    Type '{ url: string; location: string | number; locationChanged: (epubcifi: string | number) => void; epubInitOptions: { openAs: string; }; epubOptions: { flow: string; manager: string; }; getRowItem: (item: any) => string; }' is not assignable to type 'IntrinsicAttributes & IEpubViewProps & { title?: string | undefined; showToc?: boolean | undefined; readerStyles?: IReactReaderStyle | undefined; ... 6 more ...; onSearchResults?: ((results: SearchResult[]) => void) | undefined; }'.
+      Property 'getRowItem' does not exist on type 'IntrinsicAttributes & IEpubViewProps & { title?: string | undefined; showToc?: boolean | undefined; readerStyles?: IReactReaderStyle | undefined; ... 6 more ...; onSearchResults?: ((results: SearchResult[]) => void) | undefined; }'.
+  Overload 2 of 2, '(props: IReactReaderProps): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | ... 4 more ... | undefined', gave the following error.
+    Type '{ url: string; location: string | number; locationChanged: (epubcifi: string | number) => void; epubInitOptions: { openAs: string; }; epubOptions: { flow: string; manager: string; }; getRowItem: (item: any) => string; }' is not assignable to type 'IntrinsicAttributes & IEpubViewProps & { title?: string | undefined; showToc?: boolean | undefined; readerStyles?: IReactReaderStyle | undefined; ... 6 more ...; onSearchResults?: ((results: SearchResult[]) => void) | undefined; }'.
+      Property 'getRowItem' does not exist on type 'IntrinsicAttributes & IEpubViewProps & { title?: string | undefined; showToc?: boolean | undefined; readerStyles?: IReactReaderStyle | undefined; ... 6 more ...; onSearchResults?: ((results: SearchResult[]) => void) | undefined; }'.
+
+[0m [90m 54 |[39m                         manager[33m:[39m [32m'continuous'[39m[33m,[39m
+ [90m 55 |[39m                     }}
+[31m[1m>[22m[39m[90m 56 |[39m                     getRowItem[33m=[39m{(item[33m:[39m any) [33m=>[39m { [36mreturn[39m [32m''[39m }} [90m// Prevent TOC errors in some versions[39m
+ [90m    |[39m                     [31m[1m^[22m[39m
+ [90m 57 |[39m                 [33m/[39m[33m>[39m
+ [90m 58 |[39m             [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 59 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and signal: null
