@@ -34,7 +34,7 @@ const PLAYLISTS = [
       "massimo pigliucci stoic", "daily stoic português", "a arte de viver epícteto"
     ]
   },
-  { key: "disciplina", label: "Disciplina", icon: "⚔️", queries: ["disciplina militar", "motivação guerreiro", "david goggins legendado", "mentalidade de ferro", "forjar o caráter", "jocko willink legendado", "andy frisella 75 hard", "disciplina é liberdade"] },
+  { key: "disciplina", label: "Disciplina", icon: "⚔️", queries: ["david goggins motivação legendado português", "disciplina militar mentalidade de ferro", "motivação masculina transformação", "jocko willink legendado português", "mentalidade de vencedor disciplina", "andy frisella 75 hard", "disciplina é liberdade", "motivação e disciplina extrema", "treino mentalidade guerreiro"] },
   { key: "foco", label: "Foco", icon: "🎯", queries: ["deep work", "como ter foco", "produtividade extrema", "eliminar distrações", "neurociência do foco", "huberman lab foco legendado", "cal newport deep work", "foco absoluto técnicas"] },
   { key: "redpill", label: "RedPill", icon: "💊", queries: ["desenvolvimento masculino", "masculinidade alfa", "homem de alto valor", "comportamento masculino", "Dr Lair Ribeiro", "redpill português", "mindset masculino", "high value man"] },
   { key: "pnl", label: "PNL", icon: "🧬", queries: ["programação neurolinguística", "persuasão e influência", "tony robbins legendado", "gatilhos mentais", "linguagem corporal", "robert cialdini legendado", "poder da persuasão"] },
@@ -42,9 +42,18 @@ const PLAYLISTS = [
   { key: "educacao", label: "Educação", icon: "📚", queries: ["inteligência artificial educação", "automação chatgpt", "futuro do trabalho", "ferramentas de IA", "como aprender mais rápido", "memorização eficiente"] },
   {
     key: "ingles", label: "Inglês", icon: "🇺🇸", queries: [
-      "speak english with tiffani", "englishclass101", "rachel's english",
-      "speak english with vanessa", "learn english with bob the canadian",
-      "native english podcast", "luke's english podcast", "all ears english podcast"
+      "speak english with tiffani channel",
+      "speak english with vanessa",
+      "bob the canadian learn english",
+      "engvid learn english",
+      "code your english",
+      "english way brasil curso",
+      "serlymar ingles curso completo playlist",
+      "english 101 curso completo playlist",
+      "rachel's english pronunciation",
+      "all ears english podcast",
+      "luke's english podcast",
+      "english with lucy"
     ]
   },
   {
@@ -105,7 +114,6 @@ const PLAYLISTS = [
     ]
   },
   { key: "podcasts", label: "Podcasts", icon: "🎙️", queries: ["podcast huberman lab legendado | lex fridman legendado", "joe rogan legendado | podcast flow", "inteligencia ltda | podcast desenvolvimento pessoal"] },
-  { key: "ai", label: "IA Recomenda", icon: "🤖", queries: [] as string[] },
 ];
 
 const gradients = [
@@ -167,7 +175,12 @@ export default function Home() {
   const [videosLoading, setVideosLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTopic, setActiveTopic] = useState("liked");
+  // Track if ambient was playing before audiobook started so we can keep it alive
+  const ambientWasPlayingRef = useRef(false);
   const [videoSearch, setVideoSearch] = useState("");
+  // Viewer hint: show for 15s then never again
+  const [viewerHintVisible, setViewerHintVisible] = useState(false);
+  const viewerHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Settings
   const [showSettings, setShowSettings] = useState(false);
@@ -177,7 +190,7 @@ export default function Home() {
   const [newPin, setNewPin] = useState("");
   const [isAuthenticatedSettings, setIsAuthenticatedSettings] = useState(false);
   const [apiKeys, setApiKeys] = useState({ groq: "", cerebras: "", mistral: "", google: "", yt2: "", yt3: "" });
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoading] = useState(false);
   const [playingVideo, setPlayingVideo] = useState<VideoItem | null>(null);
   const [playingVideoIsPlaying, setPlayingVideoIsPlaying] = useState(true);
   const playingVideoRef = useRef<HTMLIFrameElement>(null);
@@ -474,50 +487,8 @@ export default function Home() {
   };
 
   // ═══ YouTube ═══
-  const fetchAIVideos = async (isLoadMore = false) => {
-    if (!apiKeys.groq) { setSettingsPinOpen(true); return; }
-    if (!isLoadMore && ytCacheRef.current["ai"]) { setVideos(ytCacheRef.current["ai"]); return; }
-
-    if (isLoadMore) setLoadingMore(true);
-    else { setVideosLoading(true); setVideos([]); setAiLoading(true); }
-
-    try {
-      const allVids = Object.values(ytCacheRef.current).flat();
-      const randomSlice = allVids.sort(() => 0.5 - Math.random()).slice(0, 15);
-      const titles = randomSlice.map(v => v.title).join("\n") || "estoicismo, disciplina, foco, exercícios, redpill";
-
-      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST", headers: { Authorization: `Bearer ${apiKeys.groq}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile", temperature: 0.7, max_tokens: 200,
-          messages: [
-            { role: "system", content: "Você é um curador especializado em desenvolvimento pessoal masculino, estoicismo, disciplina, saúde física/mental, PNL, exercícios, medicina natural, dieta carnívora, cura pelo alimento e educação. Analise os vídeos curtidos pelo usuário e sugira termos de busca YouTube para conteúdo de altíssima qualidade similar aos que ele já curtiu. Priorize canais médicos sobre alimentação natural, dieta carnívora/ancestral, longevidade, medicina funcional tipo @CardioDF, Dr Lair Ribeiro, Paul Saladino. Responda APENAS 5 termos de busca, um por linha, sem numeração." },
-            { role: "user", content: `Baseado nestes vídeos:\n${titles}\n\nSugira 5 buscas YouTube ${isLoadMore ? "NOVAS " : ""}relacionadas e diferentes:` },
-          ],
-        }),
-      });
-      const data = await resp.json();
-      const queries = data.choices?.[0]?.message?.content?.split("\n").filter((l: string) => l.trim()) || [];
-      const h = { Authorization: `Bearer ${token}` };
-      const items: VideoItem[] = [];
-      for (const q of queries.slice(0, 3)) {
-        try {
-          const d = await (await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q.trim())}&type=video&maxResults=10&relevanceLanguage=pt&order=relevance`, { headers: h })).json();
-          if (d.items) items.push(...d.items.map((v: any) => ({ id: v.id.videoId, title: v.snippet.title, thumbnail: v.snippet.thumbnails?.high?.url || "", channel: v.snippet.channelTitle, publishedAt: v.snippet.publishedAt })));
-        } catch { }
-      }
-      const uniqueItems = items.filter((v, i, a) => a.findIndex(x => x.id === v.id) === i);
-      const finalItems = isLoadMore ? [...(ytCacheRef.current["ai"] || []), ...uniqueItems].filter((v, i, a) => a.findIndex(x => x.id === v.id) === i) : uniqueItems;
-      ytCacheRef.current["ai"] = finalItems; setVideos(finalItems);
-    } catch (err) { console.error(err); } finally {
-      if (isLoadMore) setLoadingMore(false);
-      else { setVideosLoading(false); setAiLoading(false); }
-    }
-  };
-
   const fetchVideos = useCallback(async (topic: string, isLoadMore = false) => {
     if (!token) return;
-    if (topic === "ai") { fetchAIVideos(isLoadMore); return; }
 
     if (!isLoadMore) {
       const persistedCache = localStorage.getItem(`acervo_yt_${topic}`);
@@ -671,6 +642,9 @@ export default function Home() {
     setAudioItem(item); setAudioUrl(null); setPlaying(false); setProg(0); setDur(0); setAudioLoading(true); setPlayerOpen(true);
     const queue = allItems.filter(isAudioFile).filter(f => f.id !== item.id);
     setAudioQueue(queue);
+    // Keep ambient playing independently — record its state and ensure it stays on
+    ambientWasPlayingRef.current = ambientPlaying;
+    if (ambientVideo && !ambientPlaying) setAmbientPlaying(true);
     try {
       const r = await fetch(`https://www.googleapis.com/drive/v3/files/${item.id}?alt=media&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) throw new Error();
@@ -684,7 +658,13 @@ export default function Home() {
           if (saved) audioRef.current.currentTime = parseFloat(saved);
           audioRef.current.play();
         }
-      }, 80);
+        // Ensure ambient keeps going — re-send play command after audiobook starts
+        if (ambientPlayerRef.current?.contentWindow && ambientVideo) {
+          ambientPlayerRef.current.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'
+          );
+        }
+      }, 300);
     } catch { setAudioLoading(false); }
   };
 
@@ -1180,20 +1160,38 @@ export default function Home() {
         {/* Document Viewer */}
         <AnimatePresence>
           {previewItem && (
-            <motion.div className="viewer-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="viewer-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onAnimationComplete={() => {
+                // Show hint once, auto-dismiss after 15s, never again
+                if (!localStorage.getItem('acervo_viewer_hint_seen')) {
+                  setViewerHintVisible(true);
+                  viewerHintTimerRef.current = setTimeout(() => {
+                    setViewerHintVisible(false);
+                    localStorage.setItem('acervo_viewer_hint_seen', '1');
+                  }, 15000);
+                }
+              }}
+            >
               <div className="viewer-panel">
                 <div className="viewer-header">
                   <h3>{previewItem.name}</h3>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <a className="viewer-open-btn" href={`https://drive.google.com/file/d/${previewItem.id}/view`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Abrir no Drive ↗</a>
-                    <button className="viewer-close" onClick={() => setPreviewItem(null)}><X size={20} /></button>
+                    <button className="viewer-close" onClick={() => { setPreviewItem(null); setViewerHintVisible(false); if (viewerHintTimerRef.current) clearTimeout(viewerHintTimerRef.current); }}><X size={20} /></button>
                   </div>
                 </div>
                 <div className="viewer-body">
                   <iframe src={`https://drive.google.com/file/d/${previewItem.id}/preview`} width="100%" height="100%" style={{ border: "none", borderRadius: "12px" }} allow="autoplay" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" />
-                  <div className="viewer-hint">
-                    💡 Dica: No leitor de PDF (acima), use o menu da &quot;Lupa&quot; ou os botões de &quot;+&quot; e &quot;-&quot; para ajustar livremente o zoom, tamanho do texto e navegação pelas páginas de modo responsivo!
-                  </div>
+                  <AnimatePresence>
+                    {viewerHintVisible && (
+                      <motion.div className="viewer-hint"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                        onClick={() => { setViewerHintVisible(false); localStorage.setItem('acervo_viewer_hint_seen', '1'); if (viewerHintTimerRef.current) clearTimeout(viewerHintTimerRef.current); }}
+                      >
+                        💡 Dica: Use o menu da &quot;Lupa&quot; ou os botões &quot;+&quot; e &quot;-&quot; para ajustar o zoom. Clique para fechar.
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </motion.div>
@@ -1313,16 +1311,22 @@ export default function Home() {
                   <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {ambientVideo.title}
                   </div>
-                  {/* Volume slider */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <VolumeX size={12} color="var(--text-muted)" />
+                  {/* Volume slider with +/- buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); setAmbientVol(v => Math.max(0, v - 5)); }}
+                      style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(201,169,110,0.3)', background: 'rgba(201,169,110,0.08)', color: 'var(--gold)', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    >−</button>
                     <input
                       type="range" min="0" max="100" value={ambientVol}
                       onChange={(e) => setAmbientVol(Number(e.target.value))}
                       onClick={e => e.stopPropagation()}
                       style={{ flex: 1, height: 3, accentColor: 'var(--gold)', cursor: 'pointer' }}
                     />
-                    <Volume2 size={12} color="var(--text-muted)" />
+                    <button
+                      onClick={e => { e.stopPropagation(); setAmbientVol(v => Math.min(100, v + 5)); }}
+                      style={{ width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(201,169,110,0.3)', background: 'rgba(201,169,110,0.08)', color: 'var(--gold)', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    >+</button>
                     <span style={{ fontSize: '0.65rem', color: 'var(--gold)', fontWeight: 700, minWidth: 28, textAlign: 'right' }}>{ambientVol}%</span>
                   </div>
                 </div>

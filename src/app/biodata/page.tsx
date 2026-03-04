@@ -49,6 +49,14 @@ export default function BioDataPage() {
     });
     const [manualDataTab, setManualDataTab] = useState<'activity' | 'sleep' | 'vitals' | 'body'>('activity');
 
+    // ── User Profile ──
+    const [profile, setProfile] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('acervo_biodata_profile') || 'null') || { name: '', age: '', weight: '', height: '', goal: 'hipertrofia' }; } catch { return { name: '', age: '', weight: '', height: '', goal: 'hipertrofia' }; }
+    });
+
+    // ── Workout videos from YT ──
+    const [workoutVideos, setWorkoutVideos] = useState<{ id: string; title: string; thumbnail: string; channel: string }[]>([]);
+
     const saveManualData = async () => {
         setSyncingWearable(true);
         try {
@@ -133,81 +141,169 @@ export default function BioDataPage() {
 
     const generateWorkout = async () => {
         setGeneratingWorkout(true);
+        setWorkoutVideos([]);
+
+        // Build static workout protocol based on params
+        const goalLabels: Record<string, string> = {
+            hipertrofia: 'Hipertrofia', emagrecimento: 'Emagrecimento', forca: 'Força',
+            longevidade: 'Longevidade', funcional: 'Funcional'
+        };
+        const levelLabels: Record<string, string> = {
+            iniciante: 'Recruta', intermediario: 'Soldado', avancado: 'Operador'
+        };
+        const workoutPlans: Record<string, any> = {
+            hipertrofia: {
+                title: `Protocolo Hipertrofia — ${levelLabels[workoutLevel]}`,
+                description: 'Foco em volume e hiper estimulação muscular.',
+                rounds: workoutDuration <= 30 ? 3 : workoutDuration <= 60 ? 4 : 5,
+                exercises: [
+                    { name: 'Agachamento Livre', sets: '4x8-12', rest: '90s', muscle: 'Quádriceps/Glúteos' },
+                    { name: 'Supino Reto', sets: '4x8-12', rest: '90s', muscle: 'Peitoral' },
+                    { name: 'Remada Curvada', sets: '3x10', rest: '60s', muscle: 'Costas' },
+                    { name: 'Desenvolvimento', sets: '3x10-12', rest: '60s', muscle: 'Ombros' },
+                    { name: 'Rosca Direta', sets: '3x12', rest: '45s', muscle: 'Bíceps' },
+                    { name: 'Tríceps Corda', sets: '3x12', rest: '45s', muscle: 'Tríceps' },
+                ].slice(0, workoutDuration <= 30 ? 4 : 6)
+            },
+            emagrecimento: {
+                title: `Protocolo Fat Burn — ${levelLabels[workoutLevel]}`,
+                description: 'Alta intensidade e circuito para máximo gasto calórico.',
+                rounds: 4,
+                exercises: [
+                    { name: 'Burpee', sets: '4x15', rest: '30s', muscle: 'Full Body' },
+                    { name: 'Jump Squat', sets: '4x20', rest: '30s', muscle: 'Pernas/Glúteos' },
+                    { name: 'Mountain Climber', sets: '4x30', rest: '30s', muscle: 'Core/Cardio' },
+                    { name: 'Flexo com Toque no Ombro', sets: '3x12', rest: '45s', muscle: 'Peitoral/Core' },
+                    { name: 'Panturrilha em Pé', sets: '4x20', rest: '20s', muscle: 'Panturrilha' },
+                ]
+            },
+            forca: {
+                title: `Protocolo Força Bruta — ${levelLabels[workoutLevel]}`,
+                description: 'Movimentos compostos com baixa repetição e alta carga.',
+                rounds: 5,
+                exercises: [
+                    { name: 'Levantamento Terra', sets: '5x3-5', rest: '3min', muscle: 'Full Body' },
+                    { name: 'Agachamento Livre', sets: '5x3-5', rest: '3min', muscle: 'Pernas' },
+                    { name: 'Supino Reto', sets: '5x3-5', rest: '3min', muscle: 'Peitoral' },
+                    { name: 'Barra Fixa', sets: '4x5', rest: '2min', muscle: 'Costas' },
+                ]
+            },
+            longevidade: {
+                title: `Protocolo Longevidade — ${levelLabels[workoutLevel]}`,
+                description: 'Mobilidade, resistência e saúde articular para o longo prazo.',
+                rounds: 3,
+                exercises: [
+                    { name: 'Turkish Get-Up', sets: '3x5 cada lado', rest: '60s', muscle: 'Full Body' },
+                    { name: 'Farmers Walk', sets: '4x30m', rest: '60s', muscle: 'Core/Pedaços' },
+                    { name: 'Prancha Lateral', sets: '3x45s', rest: '30s', muscle: 'Core' },
+                    { name: 'Agachamento Goblet', sets: '3x15', rest: '60s', muscle: 'Pernas' },
+                    { name: 'Face Pull', sets: '3x15', rest: '45s', muscle: 'Ombros/Rotadores' },
+                ]
+            },
+            funcional: {
+                title: `Protocolo Funcional — ${levelLabels[workoutLevel]}`,
+                description: 'Movimentos que replicam padrões da vida real e esportes.',
+                rounds: 4,
+                exercises: [
+                    { name: 'Kettlebell Swing', sets: '4x20', rest: '45s', muscle: 'Posterior/Core' },
+                    { name: 'Box Jump', sets: '4x10', rest: '60s', muscle: 'Pernas/Potencia' },
+                    { name: 'Remo Invertido', sets: '4x12', rest: '60s', muscle: 'Costas' },
+                    { name: 'Prensa de Ombro 1 Braço', sets: '3x10', rest: '60s', muscle: 'Ombros' },
+                    { name: 'Sprint 100m', sets: '6 repetições', rest: '2min', muscle: 'Cardio/Potencia' },
+                ]
+            }
+        };
+
+        const plan = workoutPlans[workoutGoal] || workoutPlans['hipertrofia'];
+        setGeneratedWorkout(plan);
+        setActiveTab('workout-result');
+
+        // Fetch YouTube videos for this workout type
+        const ytKey = (() => { try { const k = JSON.parse(localStorage.getItem('acervo_apikeys') || '{}'); return k.google || k.yt2 || k.yt3 || ''; } catch { return ''; } })();
+        const ytUserToken = localStorage.getItem('acervo_token');
+
+        const queryMap: Record<string, string> = {
+            hipertrofia: 'treino hipertrofia muscular academia',
+            emagrecimento: 'treino emagrecimento HIIT emagrecimento rápido',
+            forca: 'treino de força powerlifting',
+            longevidade: 'treino longevidade mobilidade saúde',
+            funcional: 'treino funcional calistenia'
+        };
+        const query = queryMap[workoutGoal] || 'treino completo';
+
         try {
-            const res = await fetch(`${API_BASE}/api/biodata/workout/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    goal: workoutGoal,
-                    duration: workoutDuration,
-                    level: workoutLevel,
-                    equipment: [workoutEquipment],
-                    include_cardio: true,
-                    focus_metabolism: true,
-                    joint_protection: true
-                })
-            });
-            const json = await res.json();
-            setGeneratedWorkout(json.workout);
-            setActiveTab('workout-result');
+            const headers: Record<string, string> = ytKey ? {} : { Authorization: `Bearer ${ytUserToken}` };
+            const baseUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=6&relevanceLanguage=pt&order=relevance`;
+            const finalUrl = ytKey ? `${baseUrl}&key=${ytKey}` : baseUrl;
+            const res = await fetch(finalUrl, { headers });
+            const data = await res.json();
+            if (data.items) {
+                const vids = data.items.map((v: any) => ({
+                    id: v.id.videoId, title: v.snippet.title,
+                    thumbnail: v.snippet.thumbnails?.high?.url || v.snippet.thumbnails?.medium?.url || '',
+                    channel: v.snippet.channelTitle
+                }));
+                setWorkoutVideos(vids);
+            }
         } catch (err) {
-            console.error("Erro ao gerar treino:", err);
-        } finally {
-            setGeneratingWorkout(false);
+            console.warn('Could not fetch YT workout videos:', err);
         }
+
+        setGeneratingWorkout(false);
     };
 
     const generateNutrition = async () => {
         setGeneratingNutrition(true);
-        try {
-            const res = await fetch(`${API_BASE}/api/biodata/nutrition/plan`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ calories_target: 2200, goal: "performance", restrictions: [] })
+        // Static nutrition plan — no backend needed
+        const cals = profile.weight ? Math.round(Number(profile.weight) * 30 + 500) : 2200;
+        setTimeout(() => {
+            setGeneratedNutrition({
+                daily_calories: cals,
+                protein_g: Math.round(cals * 0.3 / 4),
+                carbs_g: Math.round(cals * 0.4 / 4),
+                fat_g: Math.round(cals * 0.3 / 9),
+                meals: [
+                    { time: '07:00', name: 'Café da manhã', description: `4 ovos mexidos + 2 fatias de tapioca + café preto` },
+                    { time: '10:00', name: 'Lanche 1', description: 'Punhado de castanhas + 1 fríta caju' },
+                    { time: '13:00', name: 'Almoço', description: `150g frango grelhado + arroz + salada verde + manteiga` },
+                    { time: '16:00', name: 'Pré-Treino', description: `Banana + 1 col. de pasta de amendoim + café` },
+                    { time: '19:00', name: 'Pós-Treino / Jantar', description: `200g carne vermelha + batata-doce + ovo cozido` },
+                    { time: '22:00', name: 'Lanche Final', description: `Queijo cottage + 2 ovos cozidos` },
+                ]
             });
-            const json = await res.json();
-            setGeneratedNutrition(json.plan);
             setActiveTab('diet-result');
-        } catch (err) {
-            console.error("Erro ao gerar nutrição:", err);
-        } finally {
             setGeneratingNutrition(false);
-        }
+        }, 800);
     };
 
-    const saveWorkout = async () => {
+    const saveWorkout = () => {
         if (!generatedWorkout) return;
         setSavingWorkout(true);
-        setWorkoutSaved(false);
+        // Save to localStorage
         try {
-            const res = await fetch(`${API_BASE}/api/biodata/workout/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    workout: generatedWorkout,
-                    goal: workoutGoal,
-                    duration: workoutDuration,
-                    level: workoutLevel,
-                })
-            });
-            if (res.ok) {
-                setWorkoutSaved(true);
-                setTimeout(() => setWorkoutSaved(false), 4000);
-            }
-        } catch (err) {
-            console.error('Erro ao salvar treino:', err);
-        } finally {
-            setSavingWorkout(false);
-        }
+            const saved = JSON.parse(localStorage.getItem('acervo_biodata_workouts') || '[]');
+            saved.unshift({ ...generatedWorkout, savedAt: new Date().toISOString(), goal: workoutGoal, level: workoutLevel });
+            localStorage.setItem('acervo_biodata_workouts', JSON.stringify(saved.slice(0, 10)));
+            setWorkoutSaved(true);
+            setTimeout(() => setWorkoutSaved(false), 3000);
+        } catch { }
+        setSavingWorkout(false);
     };
 
     const fetchExerciseVideo = async (keyword: string) => {
         try {
-            const res = await fetch(`${API_BASE}/api/biodata/youtube/search?query=${encodeURIComponent(keyword)}`);
+            const ytKey = (() => { try { const k = JSON.parse(localStorage.getItem('acervo_apikeys') || '{}'); return k.google || k.yt2 || ''; } catch { return ''; } })();
+            const ytUserToken = localStorage.getItem('acervo_token');
+            const headers: Record<string, string> = ytKey ? {} : { Authorization: `Bearer ${ytUserToken}` };
+            const baseUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(keyword + ' como fazer execução')}&type=video&maxResults=3&relevanceLanguage=pt`;
+            const finalUrl = ytKey ? `${baseUrl}&key=${ytKey}` : baseUrl;
+            const res = await fetch(finalUrl, { headers });
             const json = await res.json();
-            if (json.videos?.length > 0) setActiveExerciseVideo(json.videos[0]);
+            if (json.items?.length > 0) {
+                setActiveExerciseVideo({ id: json.items[0].id.videoId, title: json.items[0].snippet.title });
+            }
         } catch (err) {
-            console.error("Erro ao buscar vídeo:", err);
+            console.error('Erro video exer:', err);
         }
     };
 

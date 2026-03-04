@@ -7,9 +7,7 @@ const FONT_STYLE = `
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
 .font-mono-jet { font-family: 'JetBrains Mono', monospace; }
 
-.glow-text {
-    text-shadow: 0 0 20px currentColor;
-}
+.glow-text { text-shadow: 0 0 20px currentColor; }
 
 .glass-card {
     background: rgba(255, 255, 255, 0.02);
@@ -18,309 +16,617 @@ const FONT_STYLE = `
     border-radius: 1.5rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.glass-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.fin-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: white;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.fin-input:focus { border-color: rgba(245,158,11,0.5); }
+
+.emoji-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.emoji-btn { font-size: 1.4rem; padding: 4px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; background: rgba(255,255,255,0.04); transition: all 0.2s; }
+.emoji-btn.selected { border-color: rgba(245,158,11,0.6); background: rgba(245,158,11,0.12); }
 `;
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-    Target, PieChart, TrendingUp, ArrowUpRight, Shield, Brain, Zap, Plus, X, GripVertical, Layers, ArrowLeft
+    Target, Plus, X, Layers, Trash2, Edit2
 } from "lucide-react";
-import Link from 'next/link';
-import { ResponsiveContainer, Cell, Pie, PieChart as RePie, Tooltip } from 'recharts';
-import ReactMarkdown from 'react-markdown';
-
-// --- MODULES ---
-import { WealthSimulator } from "@/components/finance/WealthSimulator";
-import { TaxShield } from "@/components/finance/TaxShield";
-import { FinancialSankey } from "@/components/finance/FinancialSankey";
-import { TransactionLedger } from "@/components/finance/TransactionLedger";
 import { RecurringExpenses } from "@/components/finance/RecurringExpenses";
+import { TransactionLedger } from "@/components/finance/TransactionLedger";
 import { AnalyticsDashboard } from "@/components/finance/AnalyticsDashboard";
 
-const allocationData = [
-    { name: 'Cripto (BTC)', value: 450000, color: '#F59E0B' },
-    { name: 'Reserva (CDB)', value: 15500, color: '#10B981' },
-    { name: 'Ações BR', value: 5000, color: '#3B82F6' },
-];
+// ── Types ──
+interface Goal {
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    current_amount: number;
+    target_amount: number;
+    created_at: string;
+}
 
+interface FixedExpense {
+    id: string;
+    name: string;
+    amount: number;
+    icon: string;
+    category: string;
+}
+
+const EXPENSE_ICONS = ['🏠', '💡', '🌊', '📱', '🌐', '🚗', '⛽', '🍽️', '💊', '🎓', '🏦', '💳', '🎬', '🎵', '🏋️', '🐾', '📦', '🔧', '👕', '✈️'];
+const GOAL_ICONS = ['🎯', '🏦', '🏠', '🚗', '✈️', '💍', '🎓', '💻', '🏋️', '🌎', '🎸', '📈', '🏖️', '🛥️', '🤝', '💰', '🏆', '🛡️'];
+
+const fmtBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+// ── Persistence helpers ──
+const loadGoals = (): Goal[] => { try { return JSON.parse(localStorage.getItem('acervo_finance_goals') || '[]'); } catch { return []; } };
+const saveGoals = (g: Goal[]) => localStorage.setItem('acervo_finance_goals', JSON.stringify(g));
+
+const loadExpenses = (): FixedExpense[] => { try { return JSON.parse(localStorage.getItem('acervo_finance_expenses') || '[]'); } catch { return []; } };
+const saveExpenses = (e: FixedExpense[]) => localStorage.setItem('acervo_finance_expenses', JSON.stringify(e));
+
+const loadNetWorth = (): number => { try { return Number(localStorage.getItem('acervo_finance_networth') || '0'); } catch { return 0; } };
+const saveNetWorth = (v: number) => localStorage.setItem('acervo_finance_networth', String(v));
+
+const loadIncome = (): number => { try { return Number(localStorage.getItem('acervo_finance_income') || '0'); } catch { return 0; } };
+const saveIncome = (v: number) => localStorage.setItem('acervo_finance_income', String(v));
+
+// ── Main Component ──
 export default function FinanceDashboard() {
-    const [data, setData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [aiReport, setAiReport] = useState<string | null>(null);
-    const [analyzing, setAnalyzing] = useState(false);
-    const [modalOpen, setModalOpen] = useState(false);
+    const [goals, setGoals] = useState<Goal[]>([]);
+    const [expenses, setExpenses] = useState<FixedExpense[]>([]);
+    const [netWorth, setNetWorth] = useState(0);
+    const [monthlyIncome, setMonthlyIncome] = useState(0);
+
+    // UI State
+    const [activeSection, setActiveSection] = useState<'overview' | 'goals' | 'expenses' | 'analytics'>('overview');
+    const [goalModalOpen, setGoalModalOpen] = useState(false);
+    const [expenseModalOpen, setExpenseModalOpen] = useState(false);
     const [balanceModalOpen, setBalanceModalOpen] = useState(false);
+    const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+    const [editingExpense, setEditingExpense] = useState<FixedExpense | null>(null);
 
-    // --- DRAGGABLE SECTIONS ORDER ---
-    const [sectionOrder, setSectionOrder] = useState([
-        'analytics',
-        'ledger',
-        'goals',
-        'investments'
-    ]);
+    // Goal form
+    const [gTitle, setGTitle] = useState('');
+    const [gDesc, setGDesc] = useState('');
+    const [gIcon, setGIcon] = useState('🎯');
+    const [gCurrent, setGCurrent] = useState('');
+    const [gTarget, setGTarget] = useState('');
 
-    // === DATA FETCHING ===
-    useEffect(() => {
-        fetch("http://localhost:8001/api/finance/dashboard")
-            .then(async (res) => {
-                if (!res.ok) throw new Error("Backend offline");
-                return res.json();
-            })
-            .then((data) => {
-                setData(data);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.warn("Backend not found, using Mock data for Finance Dashboard");
-                setLoading(false);
-                setData({
-                    net_worth: 485000,
-                    goals: [
-                        { id: 1, title: 'Reserva Ouro', description: 'Caixa Rápido', current_amount: 15500, target_amount: 50000, icon: '🏦' },
-                        { id: 2, title: 'Viagem Europa', description: 'Eurotrip 2026', current_amount: 5000, target_amount: 25000, icon: '✈️' },
-                        { id: 3, title: 'Novo Carro', description: 'Civic', current_amount: 10000, target_amount: 120000, icon: '🏎️' }
-                    ]
-                });
-            });
-    }, []);
+    // Expense form
+    const [eLabel, setELabel] = useState('');
+    const [eAmount, setEAmount] = useState('');
+    const [eIcon, setEIcon] = useState('🏠');
 
-    const handleUpdateBalance = async (amount: number, income: number) => {
-        try {
-            const res = await fetch("http://localhost:8001/api/finance/wealth/update", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ total_amount: amount, income_monthly: income })
-            });
-            if (!res.ok) throw new Error("Backend offline");
-        } catch (e) {
-            console.warn("Backend unavailable, simulating local update");
-        } finally {
-            setData((prev: any) => ({ ...prev, net_worth: amount }));
-            setBalanceModalOpen(false);
+    // Balance form
+    const [bNetWorth, setBNetWorth] = useState('');
+    const [bIncome, setBIncome] = useState('');
+
+    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const monthlyBalance = monthlyIncome - totalExpenses;
+
+    // ── Goal CRUD ──
+    const openNewGoal = () => {
+        setEditingGoal(null);
+        setGTitle(''); setGDesc(''); setGIcon('🎯'); setGCurrent(''); setGTarget('');
+        setGoalModalOpen(true);
+    };
+
+    const openEditGoal = (g: Goal) => {
+        setEditingGoal(g);
+        setGTitle(g.title); setGDesc(g.description); setGIcon(g.icon);
+        setGCurrent(String(g.current_amount)); setGTarget(String(g.target_amount));
+        setGoalModalOpen(true);
+    };
+
+    const saveGoal = () => {
+        if (!gTitle.trim() || !gTarget) return;
+        let updated: Goal[];
+        if (editingGoal) {
+            updated = goals.map(g => g.id === editingGoal.id
+                ? { ...g, title: gTitle.trim(), description: gDesc.trim(), icon: gIcon, current_amount: Number(gCurrent) || 0, target_amount: Number(gTarget) }
+                : g);
+        } else {
+            const newGoal: Goal = {
+                id: Date.now().toString(), title: gTitle.trim(), description: gDesc.trim(),
+                icon: gIcon, current_amount: Number(gCurrent) || 0, target_amount: Number(gTarget),
+                created_at: new Date().toISOString()
+            };
+            updated = [...goals, newGoal];
         }
+        setGoals(updated); saveGoals(updated);
+        setGoalModalOpen(false);
     };
 
-    const callAdvisor = async () => {
-        setAnalyzing(true);
-        try {
-            const res = await fetch("http://localhost:8001/api/finance/advisor/report");
-            if (!res.ok) throw new Error("Backend offline");
-            const json = await res.json();
-            setAiReport(json.report);
-        } catch {
-            setAiReport(`## Análise Concluída (Mock)\n\n\n* Backend está offline.\n* Como uma contingência, sua saúde financeira parece controlada considerando suas reservas mockadas.\n* Recomendamos aportar mais no VOO ETF em breve.`);
-        } finally {
-            setAnalyzing(false);
+    const deleteGoal = (id: string) => {
+        const updated = goals.filter(g => g.id !== id);
+        setGoals(updated); saveGoals(updated);
+    };
+
+    // ── Expense CRUD ──
+    const openNewExpense = () => {
+        setEditingExpense(null);
+        setELabel(''); setEAmount(''); setEIcon('🏠');
+        setExpenseModalOpen(true);
+    };
+
+    const openEditExpense = (e: FixedExpense) => {
+        setEditingExpense(e);
+        setELabel(e.name); setEAmount(String(e.amount)); setEIcon(e.icon);
+        setExpenseModalOpen(true);
+    };
+
+    const saveExpense = () => {
+        if (!eLabel.trim() || !eAmount) return;
+        let updated: FixedExpense[];
+        if (editingExpense) {
+            updated = expenses.map(e => e.id === editingExpense.id
+                ? { ...e, name: eLabel.trim(), amount: Number(eAmount), icon: eIcon }
+                : e);
+        } else {
+            const newExp: FixedExpense = {
+                id: Date.now().toString(), name: eLabel.trim(),
+                amount: Number(eAmount), icon: eIcon, category: 'fixo'
+            };
+            updated = [...expenses, newExp];
         }
+        setExpenses(updated); saveExpenses(updated);
+        setExpenseModalOpen(false);
     };
 
-    // --- RENDERERS ---
-
-    const renderAnalytics = () => (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 select-none">
-            <div className="md:col-span-8">
-                <AnalyticsDashboard />
-            </div>
-            <div className="md:col-span-4">
-                <RecurringExpenses />
-            </div>
-        </div>
-    );
-
-    const renderLedger = () => (
-        <div className="grid grid-cols-1">
-            <TransactionLedger />
-        </div>
-    );
-
-    const renderGoals = () => (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 select-none">
-            <div className="md:col-span-12 bg-[#0A0A0E] border border-white/10 rounded-xl p-6 relative overflow-hidden flex flex-col min-h-[300px]">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="flex items-center gap-2 text-lg font-bold text-zinc-200">
-                        <Target size={18} className="text-emerald-500" /> Objetivos Táticos
-                    </h3>
-                    <button onClick={() => setModalOpen(true)} className="text-xs flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded transition-colors text-zinc-300">
-                        <Plus size={12} /> NOVO
-                    </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {(!data?.goals || data?.goals?.length === 0) ? (
-                        <div className="text-center py-12 text-zinc-600 col-span-full flex flex-col items-center justify-center border-2 border-dashed border-zinc-900 rounded-2xl">
-                            <Target size={32} className="mb-3 opacity-20" />
-                            <p className="font-orbitron text-xs uppercase tracking-widest font-bold">No tactical goals active</p>
-                        </div>
-                    ) : (
-                        data?.goals?.map((goal: any) => (
-                            <div key={goal.id} className="relative glass-card p-5 group hover:border-emerald-500/30">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-white/[0.03] flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                                            {goal.icon}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-orbitron text-sm font-black text-white uppercase tracking-tight">{goal.title}</h4>
-                                            <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">{goal.description}</p>
-                                        </div>
-                                    </div>
-                                    <span className="font-orbitron text-xl font-black text-emerald-400 glow-text">{((goal.current_amount / goal.target_amount) * 100).toFixed(0)}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden relative border border-white/5">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${(goal.current_amount / goal.target_amount) * 100}%` }}
-                                        transition={{ duration: 1.5, ease: "circOut" }}
-                                        className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 relative shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                                    />
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderInvestments = () => (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 opacity-60 hover:opacity-100 transition-opacity duration-300 select-none">
-            <div className="md:col-span-12 flex items-center gap-2 mb-2 pt-8 border-t border-dashed border-white/5">
-                <Layers size={14} className="text-zinc-600" />
-                <span className="text-xs uppercase tracking-widest text-zinc-600 font-bold">Área Estratégica (Longo Prazo)</span>
-            </div>
-            <div className="md:col-span-8"><FinancialSankey /></div>
-            <div className="md:col-span-4"><WealthSimulator /></div>
-            <div className="md:col-span-8 bg-[#0A0A0E] border border-white/10 rounded-xl p-6 relative overflow-hidden flex flex-col">
-                <h3 className="flex items-center gap-2 text-lg font-bold text-zinc-200 mb-2"><PieChart size={18} className="text-amber-500" /> Distribuição de Ativos</h3>
-                <div className="flex-1 min-h-[200px] w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <RePie width={400} height={400}>
-                            <Pie data={allocationData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                                {allocationData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
-                            </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: '#000', borderColor: '#333' }} itemStyle={{ color: '#fff' }} formatter={(value: any) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)} />
-                        </RePie>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-            <div className="md:col-span-4"><TaxShield /></div>
-        </div>
-    );
-
-    const sectionRenderers: Record<string, () => React.JSX.Element> = {
-        'analytics': renderAnalytics,
-        'ledger': renderLedger,
-        'goals': renderGoals,
-        'investments': renderInvestments
+    const deleteExpense = (id: string) => {
+        const updated = expenses.filter(e => e.id !== id);
+        setExpenses(updated); saveExpenses(updated);
     };
+
+    // ── Balance ──
+    const saveBalance = () => {
+        const nw = Number(bNetWorth) || 0;
+        const inc = Number(bIncome) || 0;
+        setNetWorth(nw); saveNetWorth(nw);
+        setMonthlyIncome(inc); saveIncome(inc);
+        setBalanceModalOpen(false);
+    };
+
+    const openBalance = () => {
+        setBNetWorth(String(netWorth)); setBIncome(String(monthlyIncome));
+        setBalanceModalOpen(true);
+    };
+
+    const navItems = [
+        { id: 'overview', label: 'Overview', icon: '📊' },
+        { id: 'goals', label: 'Metas', icon: '🎯' },
+        { id: 'expenses', label: 'Fixos', icon: '📋' },
+        { id: 'analytics', label: 'Extrato', icon: '💳' },
+    ] as const;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 pt-16 font-sans selection:bg-amber-500/30 overflow-x-hidden pb-32">
+        <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 pt-16 font-sans overflow-x-hidden pb-32">
             <style dangerouslySetInnerHTML={{ __html: FONT_STYLE }} />
             <PageNav title="Financeiro" />
+
+            {/* Background */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-900/10 rounded-full blur-[120px]" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-900/10 rounded-full blur-[120px]" />
-                <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-[0.03]" />
             </div>
 
-            <div className="relative z-10 max-w-[1920px] mx-auto space-y-6">
-                <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-white/5 pb-8 md:pb-6 relative">
-                    <div className="text-center md:text-left">
-                        <div className="flex flex-col md:flex-row items-center gap-3 mb-2">
-                            <div className="hidden md:block h-8 w-1 bg-gradient-to-b from-amber-400 to-amber-600 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)]" />
-                            <h1 className="font-orbitron text-4xl sm:text-5xl md:text-5xl font-black tracking-tighter text-white uppercase">BUNKER <span className="text-zinc-600">FINANCE</span></h1>
-                        </div>
-                        <p className="text-zinc-500 font-mono-jet text-[8px] md:text-sm tracking-[0.3em] uppercase md:ml-4 font-black">COMMAND CENTER v3.2</p>
+            <div className="relative z-10 max-w-[1400px] mx-auto space-y-6">
+                {/* Header */}
+                <header className="flex flex-col md:flex-row justify-between items-center md:items-end gap-6 border-b border-white/5 pb-6">
+                    <div>
+                        <h1 className="font-orbitron text-3xl md:text-5xl font-black tracking-tighter text-white uppercase">
+                            BUNKER <span className="text-zinc-600">FINANCE</span>
+                        </h1>
+                        <p className="text-zinc-500 font-mono-jet text-[8px] md:text-sm tracking-[0.3em] uppercase font-black">COMMAND CENTER v3.2</p>
                     </div>
-                    <div className="text-center md:text-right w-full md:w-auto">
-                        <div onClick={() => setBalanceModalOpen(true)} className="font-orbitron text-4xl sm:text-5xl md:text-6xl font-black tracking-tight text-white cursor-pointer hover:text-emerald-400 transition-colors flex items-center justify-center md:justify-end gap-3 md:gap-4 group">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data?.net_worth || 0)}
-                            <div className="hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 p-2 rounded-full"><TrendingUp size={24} className="text-zinc-400" /></div>
+                    <div className="text-center md:text-right cursor-pointer" onClick={openBalance}>
+                        <div className="font-orbitron text-3xl md:text-5xl font-black text-white hover:text-emerald-400 transition-colors">
+                            {fmtBRL(netWorth)}
                         </div>
-                        <div className="text-[8px] md:text-[10px] text-zinc-600 uppercase tracking-[0.3em] font-black mt-2 md:mt-1 md:mr-1">PATRIMÔNIO LÍQUIDO CONSOLIDADO</div>
+                        <div className="text-[8px] text-zinc-600 uppercase tracking-[0.3em] font-black mt-1">
+                            PATRIMÔNIO • clique para editar
+                        </div>
                     </div>
                 </header>
 
-                <Reorder.Group axis="y" values={sectionOrder} onReorder={setSectionOrder} className="space-y-8">
-                    {sectionOrder.map((section) => (
-                        <DraggableSection key={section} section={section}>
-                            {sectionRenderers[section]()}
-                        </DraggableSection>
-                    ))}
-                </Reorder.Group>
-
-            </div>
-
-            <div className="fixed bottom-8 right-8 z-50">
-                <button onClick={callAdvisor} disabled={analyzing} className="group relative flex items-center justify-center">
-                    <div className={`absolute inset-0 bg-indigo-600 rounded-full blur-xl opacity-40 group-hover:opacity-70 transition-opacity ${analyzing ? "animate-pulse" : ""}`} />
-                    <div className="relative bg-[#111] border border-indigo-500/50 text-indigo-400 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform cursor-pointer overflow-hidden">
-                        <Brain size={28} className={`relative z-10 ${analyzing ? "animate-spin-slow" : ""}`} />
-                    </div>
-                </button>
-            </div>
-
-            <AnimatePresence>
-                {aiReport && (
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8">
-                        <div className="bg-[#0A0A0E] border border-indigo-500/30 w-full max-w-5xl h-[85vh] rounded-2xl flex flex-col relative overflow-hidden">
-                            <div className="p-8 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-indigo-900/20 to-transparent">
-                                <div><h2 className="text-2xl font-bold text-white">Fred Intelligence</h2></div>
-                                <button onClick={() => setAiReport(null)}><X size={24} className="text-zinc-500 hover:text-white" /></button>
-                            </div>
-                            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar prose prose-invert max-w-none"><ReactMarkdown>{aiReport}</ReactMarkdown></div>
+                {/* Monthly Income vs Expenses Summary */}
+                {(monthlyIncome > 0 || totalExpenses > 0) && (
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="glass-card p-4 text-center">
+                            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Renda Mensal</p>
+                            <p className="font-orbitron text-lg font-black text-emerald-400">{fmtBRL(monthlyIncome)}</p>
                         </div>
+                        <div className="glass-card p-4 text-center">
+                            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Fixos/Mês</p>
+                            <p className="font-orbitron text-lg font-black text-red-400">{fmtBRL(totalExpenses)}</p>
+                        </div>
+                        <div className="glass-card p-4 text-center">
+                            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Sobra Líquida</p>
+                            <p className={`font-orbitron text-lg font-black ${monthlyBalance >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+                                {fmtBRL(monthlyBalance)}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Nav Tabs */}
+                <nav className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    {navItems.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setActiveSection(item.id as any)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeSection === item.id
+                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                : 'bg-white/5 text-zinc-400 hover:text-white border border-white/5'}`}
+                        >
+                            <span>{item.icon}</span> {item.label}
+                        </button>
+                    ))}
+                </nav>
+
+                {/* ── OVERVIEW ── */}
+                {activeSection === 'overview' && (
+                    <div className="space-y-6">
+                        {/* Quick stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[
+                                { label: 'Metas Ativas', value: goals.length, icon: '🎯', color: 'text-amber-400' },
+                                { label: 'Despesas Fixas', value: expenses.length, icon: '📋', color: 'text-red-400' },
+                                { label: 'Total Fixos', value: fmtBRL(totalExpenses), icon: '💸', color: 'text-orange-400' },
+                                { label: 'Saldo Livre', value: fmtBRL(monthlyBalance), icon: '✅', color: monthlyBalance >= 0 ? 'text-emerald-400' : 'text-red-500' },
+                            ].map((s, i) => (
+                                <div key={i} className="glass-card p-4">
+                                    <p className="text-2xl mb-1">{s.icon}</p>
+                                    <p className={`font-orbitron text-xl font-black ${s.color}`}>{s.value}</p>
+                                    <p className="text-xs text-zinc-500 uppercase tracking-widest">{s.label}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Goals preview */}
+                        {goals.length > 0 && (
+                            <div className="glass-card p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-orbitron text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                                        <Target size={16} className="text-amber-500" /> Objetivos Táticos
+                                    </h3>
+                                    <button onClick={() => setActiveSection('goals')} className="text-xs text-amber-400 hover:text-amber-300 font-bold">VER TODOS →</button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {goals.slice(0, 3).map(g => {
+                                        const pct = Math.min(100, g.target_amount > 0 ? (g.current_amount / g.target_amount) * 100 : 0);
+                                        return (
+                                            <div key={g.id} className="bg-white/[0.02] rounded-2xl p-4 border border-white/5">
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <span className="text-2xl">{g.icon}</span>
+                                                    <div>
+                                                        <p className="font-bold text-sm">{g.title}</p>
+                                                        <p className="text-xs text-zinc-500">{g.description}</p>
+                                                    </div>
+                                                    <span className="ml-auto font-orbitron text-sm font-black text-emerald-400">{pct.toFixed(0)}%</span>
+                                                </div>
+                                                <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                                                        transition={{ duration: 1.2, ease: 'circOut' }}
+                                                        className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400"
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between text-xs text-zinc-600 mt-1">
+                                                    <span>{fmtBRL(g.current_amount)}</span>
+                                                    <span>{fmtBRL(g.target_amount)}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Expenses preview */}
+                        {expenses.length > 0 && (
+                            <div className="glass-card p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-orbitron text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                                        <Layers size={16} className="text-red-400" /> Despesas Fixas Mensais
+                                    </h3>
+                                    <button onClick={() => setActiveSection('expenses')} className="text-xs text-amber-400 hover:text-amber-300 font-bold">GERENCIAR →</button>
+                                </div>
+                                <div className="space-y-2">
+                                    {expenses.slice(0, 5).map(e => (
+                                        <div key={e.id} className="flex items-center justify-between bg-white/[0.02] rounded-xl px-4 py-2">
+                                            <span className="flex items-center gap-2 text-sm"><span>{e.icon}</span>{e.name}</span>
+                                            <span className="font-orbitron text-sm font-bold text-red-400">{fmtBRL(e.amount)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Empty state */}
+                        {goals.length === 0 && expenses.length === 0 && (
+                            <div className="glass-card p-12 text-center">
+                                <p className="text-5xl mb-4">🚀</p>
+                                <h3 className="font-orbitron text-xl font-black mb-2">Comece Agora</h3>
+                                <p className="text-zinc-500 text-sm mb-6">Defina suas metas financeiras e cadastre suas despesas fixas mensais para ter controle total.</p>
+                                <div className="flex gap-3 justify-center">
+                                    <button onClick={openBalance} className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-xl text-sm font-bold transition-colors">Definir Renda</button>
+                                    <button onClick={() => setActiveSection('goals')} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-xl text-sm font-bold transition-colors">Criar Meta</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── GOALS ── */}
+                {activeSection === 'goals' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h2 className="font-orbitron text-xl font-black uppercase flex items-center gap-2">
+                                <Target size={20} className="text-amber-500" /> Objetivos Táticos
+                            </h2>
+                            <button onClick={openNewGoal} className="flex items-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+                                <Plus size={16} /> NOVA META
+                            </button>
+                        </div>
+
+                        {goals.length === 0 ? (
+                            <div className="glass-card p-12 text-center">
+                                <p className="text-5xl mb-3">🎯</p>
+                                <p className="text-zinc-500 text-sm">Nenhuma meta cadastrada. Crie sua primeira!</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {goals.map(g => {
+                                    const pct = Math.min(100, g.target_amount > 0 ? (g.current_amount / g.target_amount) * 100 : 0);
+                                    return (
+                                        <motion.div key={g.id} layout className="glass-card p-5 relative group">
+                                            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => openEditGoal(g)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                                    <Edit2 size={14} className="text-zinc-400" />
+                                                </button>
+                                                <button onClick={() => deleteGoal(g.id)} className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors">
+                                                    <Trash2 size={14} className="text-red-400" />
+                                                </button>
+                                            </div>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-14 h-14 rounded-2xl bg-white/[0.03] flex items-center justify-center text-3xl">
+                                                    {g.icon}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-orbitron text-sm font-black text-white uppercase truncate">{g.title}</h4>
+                                                    <p className="text-xs text-zinc-500 mt-0.5 truncate">{g.description}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-xs text-zinc-500">Progresso</span>
+                                                <span className="font-orbitron text-sm font-black text-emerald-400 glow-text">{pct.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5 mb-2">
+                                                <motion.div
+                                                    initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                                                    transition={{ duration: 1.5, ease: 'circOut' }}
+                                                    className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                                                />
+                                            </div>
+                                            <div className="flex justify-between text-xs text-zinc-600 mt-1">
+                                                <span className="text-emerald-400/80">{fmtBRL(g.current_amount)}</span>
+                                                <span>de {fmtBRL(g.target_amount)}</span>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── FIXED EXPENSES ── */}
+                {activeSection === 'expenses' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h2 className="font-orbitron text-xl font-black uppercase flex items-center gap-2">
+                                <Layers size={20} className="text-red-400" /> Despesas Fixas
+                            </h2>
+                            <button onClick={openNewExpense} className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+                                <Plus size={16} /> ADICIONAR
+                            </button>
+                        </div>
+
+                        {/* Summary cards */}
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="glass-card p-4 text-center">
+                                <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Renda</p>
+                                <p className="font-orbitron text-lg font-black text-emerald-400">{fmtBRL(monthlyIncome)}</p>
+                            </div>
+                            <div className="glass-card p-4 text-center">
+                                <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Total Fixos</p>
+                                <p className="font-orbitron text-lg font-black text-red-400">{fmtBRL(totalExpenses)}</p>
+                            </div>
+                            <div className="glass-card p-4 text-center">
+                                <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Saldo Livre</p>
+                                <p className={`font-orbitron text-lg font-black ${monthlyBalance >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+                                    {fmtBRL(monthlyBalance)}
+                                </p>
+                            </div>
+                        </div>
+
+                        {expenses.length === 0 ? (
+                            <div className="glass-card p-12 text-center">
+                                <p className="text-5xl mb-3">📋</p>
+                                <p className="text-zinc-500 text-sm">Nenhuma despesa fixa cadastrada. Adicione suas contas mensais para calcular sua sobra real.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {expenses.map(e => (
+                                    <motion.div key={e.id} layout className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-4 group hover:border-white/10 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-2xl">{e.icon}</span>
+                                            <p className="font-semibold text-sm">{e.name}</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-orbitron text-sm font-black text-red-400">{fmtBRL(e.amount)}</span>
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => openEditExpense(e)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                                    <Edit2 size={13} className="text-zinc-400" />
+                                                </button>
+                                                <button onClick={() => deleteExpense(e.id)} className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-colors">
+                                                    <Trash2 size={13} className="text-red-400" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+
+                                <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/20 rounded-2xl px-5 py-4 mt-4">
+                                    <p className="font-orbitron text-sm font-black text-amber-400 uppercase">Total Mensal</p>
+                                    <p className="font-orbitron text-lg font-black text-red-400">{fmtBRL(totalExpenses)}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── ANALYTICS ── */}
+                {activeSection === 'analytics' && (
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <div className="md:col-span-8"><AnalyticsDashboard /></div>
+                        <div className="md:col-span-4"><RecurringExpenses /></div>
+                        <div className="md:col-span-12"><TransactionLedger /></div>
+                    </div>
+                )}
+            </div>
+
+            {/* ── MODALS ── */}
+
+            {/* Balance Modal */}
+            <AnimatePresence>
+                {balanceModalOpen && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setBalanceModalOpen(false)}>
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-[#0A0A0E] border border-emerald-500/30 p-8 rounded-2xl max-w-md w-full relative"
+                            onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setBalanceModalOpen(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><X size={20} /></button>
+                            <h2 className="font-orbitron text-lg font-black text-white mb-6">💼 Meu Patrimônio</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Patrimônio Total (R$)</label>
+                                    <input type="number" value={bNetWorth} onChange={e => setBNetWorth(e.target.value)} className="fin-input" placeholder="0,00" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Renda Mensal Líquida (R$)</label>
+                                    <input type="number" value={bIncome} onChange={e => setBIncome(e.target.value)} className="fin-input" placeholder="0,00" />
+                                </div>
+                                <button onClick={saveBalance} className="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold text-black text-sm transition-colors uppercase tracking-wider">Salvar</button>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {modalOpen && (
-                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-[#0A0A0E] border border-white/10 p-8 rounded-xl max-w-md w-full relative">
-                        <button onClick={() => setModalOpen(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><X size={20} /></button>
-                        <p className="text-zinc-500 mb-4">Adicionar Meta (Mock)</p>
-                        <button onClick={async () => {
-                            await fetch("http://localhost:8001/api/finance/goals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Nova Meta", target_amount: 10000, current_amount: 0, icon: "🎯" }) });
-                            window.location.reload();
-                        }} className="w-full bg-emerald-600 py-2 rounded">Criar Meta Genérica</button>
-                    </div>
-                </div>
-            )}
+            {/* Goal Modal */}
+            <AnimatePresence>
+                {goalModalOpen && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setGoalModalOpen(false)}>
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-[#0A0A0E] border border-amber-500/30 p-8 rounded-2xl max-w-lg w-full relative max-h-[90vh] overflow-y-auto"
+                            onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setGoalModalOpen(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><X size={20} /></button>
+                            <h2 className="font-orbitron text-lg font-black text-white mb-6">{editingGoal ? '✏️ Editar Meta' : '🎯 Nova Meta'}</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-1">Ícone</label>
+                                    <div className="emoji-picker">
+                                        {GOAL_ICONS.map(icon => (
+                                            <button key={icon} onClick={() => setGIcon(icon)} className={`emoji-btn ${gIcon === icon ? 'selected' : ''}`}>{icon}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Título *</label>
+                                    <input value={gTitle} onChange={e => setGTitle(e.target.value)} className="fin-input" placeholder="Ex: Reserva de Emergência" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Descrição</label>
+                                    <input value={gDesc} onChange={e => setGDesc(e.target.value)} className="fin-input" placeholder="Descrição curta" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Valor Atual (R$)</label>
+                                        <input type="number" value={gCurrent} onChange={e => setGCurrent(e.target.value)} className="fin-input" placeholder="0" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Meta (R$) *</label>
+                                        <input type="number" value={gTarget} onChange={e => setGTarget(e.target.value)} className="fin-input" placeholder="10000" />
+                                    </div>
+                                </div>
+                                <button onClick={saveGoal} disabled={!gTitle.trim() || !gTarget}
+                                    className="w-full bg-amber-500 disabled:opacity-40 hover:bg-amber-400 py-3 rounded-xl font-bold text-black text-sm transition-colors uppercase tracking-wider">
+                                    {editingGoal ? 'Salvar Alterações' : 'Criar Meta'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            {balanceModalOpen && (
-                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-[#0A0A0E] border border-emerald-500/30 p-8 rounded-xl max-w-md w-full relative">
-                        <button onClick={() => setBalanceModalOpen(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><X size={20} /></button>
-                        <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); handleUpdateBalance(Number(fd.get('amount')), Number(fd.get('income'))); }} className="space-y-4">
-                            <input name="amount" type="number" defaultValue={data?.net_worth} className="w-full bg-zinc-900 p-3 rounded text-white" />
-                            <input name="income" type="number" defaultValue={data?.monthly_income} className="w-full bg-zinc-900 p-3 rounded text-white" />
-                            <button className="w-full bg-emerald-600 py-3 rounded font-bold">ATUALIZAR</button>
-                        </form>
-                    </div>
-                </div>
-            )}
+            {/* Expense Modal */}
+            <AnimatePresence>
+                {expenseModalOpen && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setExpenseModalOpen(false)}>
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-[#0A0A0E] border border-red-500/30 p-8 rounded-2xl max-w-lg w-full relative max-h-[90vh] overflow-y-auto"
+                            onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setExpenseModalOpen(false)} className="absolute top-4 right-4 text-zinc-500 hover:text-white"><X size={20} /></button>
+                            <h2 className="font-orbitron text-lg font-black text-white mb-6">{editingExpense ? '✏️ Editar Despesa' : '📋 Nova Despesa Fixa'}</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-1">Ícone</label>
+                                    <div className="emoji-picker">
+                                        {EXPENSE_ICONS.map(icon => (
+                                            <button key={icon} onClick={() => setEIcon(icon)} className={`emoji-btn ${eIcon === icon ? 'selected' : ''}`}>{icon}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Nome *</label>
+                                    <input value={eLabel} onChange={e => setELabel(e.target.value)} className="fin-input" placeholder="Ex: Aluguel, Netflix, Energia..." />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-zinc-500 uppercase tracking-widest mb-2">Valor Mensal (R$) *</label>
+                                    <input type="number" value={eAmount} onChange={e => setEAmount(e.target.value)} className="fin-input" placeholder="0" />
+                                </div>
+                                <button onClick={saveExpense} disabled={!eLabel.trim() || !eAmount}
+                                    className="w-full bg-red-600 disabled:opacity-40 hover:bg-red-500 py-3 rounded-xl font-bold text-white text-sm transition-colors uppercase tracking-wider">
+                                    {editingExpense ? 'Salvar Alterações' : 'Adicionar Despesa'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
-    );
-}
-
-function DraggableSection({ section, children }: { section: string, children: React.ReactNode }) {
-    const controls = useDragControls();
-
-    return (
-        <Reorder.Item
-            value={section}
-            dragListener={false}
-            dragControls={controls}
-            className="relative group/drag"
-        >
-            <div
-                className="absolute -left-2 md:-left-6 top-6 cursor-grab active:cursor-grabbing opacity-0 group-hover/drag:opacity-100 transition-opacity z-50 text-zinc-600 hover:text-zinc-300 bg-black/50 md:bg-transparent rounded p-1"
-                onPointerDown={(e) => controls.start(e)}
-            >
-                <GripVertical className="w-[20px] h-[20px] md:w-[24px] md:h-[24px]" />
-            </div>
-            {children}
-        </Reorder.Item>
     );
 }
