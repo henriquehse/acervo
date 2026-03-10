@@ -10,7 +10,7 @@ import {
     Play, ShieldCheck, Server, User, Lock,
     ArrowLeft, LogIn, LogOut, Home,
     Maximize2, SkipBack, SkipForward, Minimize2, MoveDiagonal, Radio, History, Settings, Check,
-    Filter, ChevronDown, Activity, X
+    Filter, ChevronDown, Activity, X, Shield, KeyRound, Wifi, WifiOff, Clock, ChevronUp
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -315,6 +315,12 @@ function TVPageContent() {
 
     const [isFullscreen] = useState(false);
     const [isZoomed, setIsZoomed] = useState(false);
+
+    // --- VAULT STATE ---
+    const [showVault, setShowVault] = useState(false);
+    const [vaultAccounts, setVaultAccounts] = useState<any[]>([]);
+    const [vaultLoading, setVaultLoading] = useState(false);
+    const [verifyingAccount, setVerifyingAccount] = useState<string | null>(null);
 
     // --- STATE & UTILS (Moved to top to avoid hoisting issues) ---
     const [history, setHistory] = useState<any[]>([]);
@@ -1205,6 +1211,223 @@ function TVPageContent() {
                                                 </div>
                                             ))}
                                         </div>
+                                    </section>
+
+                                    {/* VAULT DE CONTAS IPTV */}
+                                    <section className="mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-500">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-1 h-6 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
+                                                <h2 className="text-xl font-bold text-gray-200 tracking-wide">VAULT DE CONTAS</h2>
+                                                <span className="text-[10px] font-black text-amber-500/60 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                                                    AUTO-FAILOVER
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    if (showVault && vaultAccounts.length > 0) {
+                                                        setShowVault(false);
+                                                        return;
+                                                    }
+                                                    setShowVault(true);
+                                                    setVaultLoading(true);
+                                                    try {
+                                                        const res = await fetch('/api/iptv/accounts');
+                                                        const accounts = await res.json();
+                                                        // Mark current account
+                                                        const enriched = accounts.map((acc: any) => ({
+                                                            ...acc,
+                                                            isCurrent: acc.host === creds.host && acc.user === creds.user,
+                                                            verified: acc.host === creds.host && acc.user === creds.user ? 'active' : 'unknown'
+                                                        }));
+                                                        setVaultAccounts(enriched);
+                                                    } catch (e) {
+                                                        console.error('Erro ao carregar vault:', e);
+                                                    } finally {
+                                                        setVaultLoading(false);
+                                                    }
+                                                }}
+                                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${showVault ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'}`}
+                                            >
+                                                {showVault ? <ChevronUp size={16} /> : <KeyRound size={16} />}
+                                                {showVault ? 'Ocultar Vault' : 'Abrir Vault'}
+                                            </button>
+                                        </div>
+
+                                        {!showVault && (
+                                            <div className="bg-[#0a0a0f]/60 backdrop-blur-md rounded-2xl border border-white/5 p-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                                                        <Shield size={24} className="text-amber-500" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-white font-bold">Sistema de Failover Automático</h3>
+                                                        <p className="text-gray-500 text-sm">Clique em &quot;Abrir Vault&quot; para ver todas as contas disponíveis. Se uma conta cair, o sistema troca automaticamente para a próxima ativa.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {showVault && (
+                                            <div className="space-y-3">
+                                                {vaultLoading ? (
+                                                    <div className="flex items-center justify-center h-32 bg-[#0a0a0f]/60 backdrop-blur-md rounded-2xl border border-white/5">
+                                                        <RefreshCw className="animate-spin text-amber-500" size={32} />
+                                                        <span className="ml-3 text-gray-400 font-bold">Carregando Vault...</span>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {/* Stats Bar */}
+                                                        <div className="grid grid-cols-3 gap-4 mb-4">
+                                                            <div className="bg-[#0a0a0f]/60 backdrop-blur-md rounded-xl border border-emerald-500/20 p-4 text-center">
+                                                                <div className="text-2xl font-black text-emerald-400">{vaultAccounts.length}</div>
+                                                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total Contas</div>
+                                                            </div>
+                                                            <div className="bg-[#0a0a0f]/60 backdrop-blur-md rounded-xl border border-cyan-500/20 p-4 text-center">
+                                                                <div className="text-2xl font-black text-cyan-400">{new Set(vaultAccounts.map((a: any) => a.host)).size}</div>
+                                                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Servidores</div>
+                                                            </div>
+                                                            <div className="bg-[#0a0a0f]/60 backdrop-blur-md rounded-xl border border-amber-500/20 p-4 text-center">
+                                                                <div className="text-2xl font-black text-amber-400">{vaultAccounts.filter((a: any) => a.verified === 'active').length}</div>
+                                                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Verificadas</div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Account Cards */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-amber-500/30">
+                                                            {vaultAccounts.map((acc: any, idx: number) => (
+                                                                <div
+                                                                    key={`${acc.host}-${acc.user}-${idx}`}
+                                                                    className={`group relative bg-[#0a0a0f]/80 backdrop-blur-md rounded-xl border p-4 transition-all duration-300 cursor-pointer hover:-translate-y-1 ${
+                                                                        acc.isCurrent
+                                                                            ? 'border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.15)] bg-emerald-500/5'
+                                                                            : acc.verified === 'active'
+                                                                            ? 'border-cyan-500/30 hover:border-cyan-500/60'
+                                                                            : acc.verified === 'dead'
+                                                                            ? 'border-red-500/20 opacity-50'
+                                                                            : 'border-white/5 hover:border-amber-500/40'
+                                                                    }`}
+                                                                    onClick={async () => {
+                                                                        if (acc.isCurrent) return;
+                                                                        setVerifyingAccount(acc.user);
+                                                                        const success = await handleLogin({ host: acc.host, user: acc.user, pass: acc.pass }, true);
+                                                                        if (success) {
+                                                                            setVaultAccounts(prev => prev.map(a => ({
+                                                                                ...a,
+                                                                                isCurrent: a.host === acc.host && a.user === acc.user,
+                                                                                verified: a.host === acc.host && a.user === acc.user ? 'active' : a.isCurrent ? 'unknown' : a.verified
+                                                                            })));
+                                                                        } else {
+                                                                            setVaultAccounts(prev => prev.map(a =>
+                                                                                a.host === acc.host && a.user === acc.user ? { ...a, verified: 'dead' } : a
+                                                                            ));
+                                                                        }
+                                                                        setVerifyingAccount(null);
+                                                                    }}
+                                                                >
+                                                                    {/* Status Indicator */}
+                                                                    <div className="flex items-center justify-between mb-3">
+                                                                        <div className="flex items-center gap-2">
+                                                                            {acc.isCurrent ? (
+                                                                                <div className="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full">
+                                                                                    <Wifi size={10} />
+                                                                                    <span className="text-[9px] font-black uppercase">Ativa</span>
+                                                                                </div>
+                                                                            ) : acc.verified === 'active' ? (
+                                                                                <div className="flex items-center gap-1.5 bg-cyan-500/20 text-cyan-400 px-2.5 py-1 rounded-full">
+                                                                                    <Wifi size={10} />
+                                                                                    <span className="text-[9px] font-black uppercase">Online</span>
+                                                                                </div>
+                                                                            ) : acc.verified === 'dead' ? (
+                                                                                <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 px-2.5 py-1 rounded-full">
+                                                                                    <WifiOff size={10} />
+                                                                                    <span className="text-[9px] font-black uppercase">Offline</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="flex items-center gap-1.5 bg-white/5 text-gray-500 px-2.5 py-1 rounded-full">
+                                                                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                                                                                    <span className="text-[9px] font-black uppercase">Pendente</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                                                            acc.tier === 'Premium Top' ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-500'
+                                                                        }`}>
+                                                                            {acc.tier}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* Account Info */}
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Server size={12} className="text-gray-600" />
+                                                                            <span className="text-xs text-gray-400 font-mono truncate">{acc.host.replace('http://', '')}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <User size={12} className="text-gray-600" />
+                                                                            <span className="text-sm text-white font-bold">{acc.user}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Clock size={12} className="text-gray-600" />
+                                                                            <span className="text-xs text-gray-500">Expira: {acc.exp}</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Action Overlay */}
+                                                                    {!acc.isCurrent && (
+                                                                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                                                            {verifyingAccount === acc.user ? (
+                                                                                <div className="flex items-center gap-2 text-amber-400">
+                                                                                    <RefreshCw size={18} className="animate-spin" />
+                                                                                    <span className="text-sm font-bold">Verificando...</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="flex items-center gap-2 text-white">
+                                                                                    <Zap size={18} className="text-amber-400" />
+                                                                                    <span className="text-sm font-bold">Ativar esta conta</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* Verify All Button */}
+                                                        <div className="mt-4 flex justify-center">
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    setVaultLoading(true);
+                                                                    const updated = [...vaultAccounts];
+                                                                    for (let i = 0; i < updated.length; i++) {
+                                                                        if (updated[i].isCurrent) continue;
+                                                                        setVerifyingAccount(updated[i].user);
+                                                                        try {
+                                                                            const baseUrl = updated[i].host.endsWith('/') ? updated[i].host.slice(0, -1) : updated[i].host;
+                                                                            const loginUrl = `${baseUrl}/player_api.php?username=${updated[i].user}&password=${updated[i].pass}`;
+                                                                            const res = await fetch(`/api/iptv/proxy?url=${encodeURIComponent(loginUrl)}`);
+                                                                            const data = await res.json();
+                                                                            updated[i] = { ...updated[i], verified: data.user_info?.auth === 1 ? 'active' : 'dead' };
+                                                                        } catch {
+                                                                            updated[i] = { ...updated[i], verified: 'dead' };
+                                                                        }
+                                                                        setVaultAccounts([...updated]);
+                                                                    }
+                                                                    setVerifyingAccount(null);
+                                                                    setVaultLoading(false);
+                                                                }}
+                                                                disabled={vaultLoading}
+                                                                className="flex items-center gap-2 px-6 py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-400 font-bold text-sm transition-all disabled:opacity-50"
+                                                            >
+                                                                <ShieldCheck size={16} />
+                                                                {vaultLoading ? 'Verificando...' : 'Verificar Todas as Contas'}
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </section>
                                 </div>
                             </div>
