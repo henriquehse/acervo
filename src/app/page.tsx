@@ -645,27 +645,27 @@ export default function Home() {
     // Keep ambient playing independently — record its state and ensure it stays on
     ambientWasPlayingRef.current = ambientPlaying;
     if (ambientVideo && !ambientPlaying) setAmbientPlaying(true);
-    try {
-      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${item.id}?alt=media&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!r.ok) throw new Error();
-      setAudioUrl(URL.createObjectURL(await r.blob()));
-      setPlaying(true);
-      setTimeout(() => {
-        if (audioRef.current) {
-          audioRef.current.playbackRate = rate;
-          audioRef.current.volume = volume;
-          const saved = localStorage.getItem(`acervo_pos_${item.id}`);
-          if (saved) audioRef.current.currentTime = parseFloat(saved);
-          audioRef.current.play();
-        }
-        // Ensure ambient keeps going — re-send play command after audiobook starts
-        if (ambientPlayerRef.current?.contentWindow && ambientVideo) {
-          ambientPlayerRef.current.contentWindow.postMessage(
-            JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'
-          );
-        }
-      }, 300);
-    } catch { setAudioLoading(false); }
+
+    // Use direct streaming URL instead of downloading the whole Blob into memory (which freezes the browser/YouTube)
+    const streamUrl = `https://www.googleapis.com/drive/v3/files/${item.id}?alt=media&supportsAllDrives=true&access_token=${token}`;
+    setAudioUrl(streamUrl);
+    setPlaying(true);
+
+    setTimeout(() => {
+      if (audioRef.current) {
+        audioRef.current.playbackRate = rate;
+        audioRef.current.volume = volume;
+        const saved = localStorage.getItem(`acervo_pos_${item.id}`);
+        if (saved) audioRef.current.currentTime = parseFloat(saved);
+        audioRef.current.play().catch(e => console.error("Audio play failed:", e));
+      }
+      // Ensure ambient keeps going
+      if (ambientPlayerRef.current?.contentWindow && ambientVideo) {
+        ambientPlayerRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'
+        );
+      }
+    }, 300);
   };
 
   const resumeRecent = async (rp: RecentPlay) => {
@@ -675,7 +675,21 @@ export default function Home() {
     playAudio(item);
   };
 
-  const toggle = () => { if (!audioRef.current) return; playing ? audioRef.current.pause() : audioRef.current.play(); setPlaying(!playing); };
+  const handleAudioPlay = () => {
+    setPlaying(true);
+    // Overcome browser Media Session limitations by forcing ambient video to play again
+    if (ambientVideo && ambientPlaying && ambientPlayerRef.current?.contentWindow) {
+      [100, 500, 1000].forEach(delay => {
+        setTimeout(() => {
+          ambientPlayerRef.current?.contentWindow?.postMessage(
+            JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*'
+          );
+        }, delay);
+      });
+    }
+  };
+
+  const toggle = () => { if (!audioRef.current) return; playing ? audioRef.current.pause() : audioRef.current.play(); };
   const skip = (s: number) => { if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime + s); };
   const cycleRate = () => { const r2 = [0.75, 1, 1.25, 1.5, 1.75, 2]; const n = r2[(r2.indexOf(rate) + 1) % r2.length]; setRate(n); if (audioRef.current) audioRef.current.playbackRate = n; };
   const changeVol = (v: number) => { setVolumeState(v); if (audioRef.current) audioRef.current.volume = v; };
@@ -831,7 +845,7 @@ export default function Home() {
             </div>
           )}
 
-          {audioUrl && <audio ref={audioRef} src={audioUrl} onTimeUpdate={() => setProg(audioRef.current?.currentTime || 0)} onLoadedMetadata={() => { setDur(audioRef.current?.duration || 0); setAudioLoading(false); }} onEnded={handleEnded} onError={() => setAudioLoading(false)} />}
+          {audioUrl && <audio ref={audioRef} src={audioUrl} onPlay={handleAudioPlay} onPause={() => setPlaying(false)} onTimeUpdate={() => setProg(audioRef.current?.currentTime || 0)} onLoadedMetadata={() => { setDur(audioRef.current?.duration || 0); setAudioLoading(false); }} onEnded={handleEnded} onError={() => setAudioLoading(false)} />}
         </main>
       </>
     );
@@ -1393,6 +1407,8 @@ export default function Home() {
         <audio
           ref={audioRef}
           src={audioUrl}
+          onPlay={handleAudioPlay}
+          onPause={() => setPlaying(false)}
           onTimeUpdate={() => setProg(audioRef.current?.currentTime || 0)}
           onLoadedMetadata={() => { setDur(audioRef.current?.duration || 0); setAudioLoading(false); }}
           onEnded={handleEnded}

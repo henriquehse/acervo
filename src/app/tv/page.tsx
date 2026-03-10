@@ -136,6 +136,146 @@ const getProxiedImage = (url: string) => {
 
 // --- COMPONENTS ---
 
+const CategoryDropdown = ({ categories, selected, onChange }: { categories: Category[], selected: string, onChange: (id: string) => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const selectedName = categories.find(c => c.category_id === selected)?.category_name || 'Todas as Categorias';
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const getIcon = (name: string) => {
+        const n = name.toLowerCase();
+        if (n.includes('futebol') || n.includes('sport') || n.includes('espn') || n.includes('premiere')) return '⚽';
+        if (n.includes('filme') || n.includes('cine') || n.includes('telecine') || n.includes('hbo')) return '🎬';
+        if (n.includes('serie') || n.includes('série') || n.includes('novela')) return '📺';
+        if (n.includes('infantil') || n.includes('kids') || n.includes('desenho')) return '🧸';
+        if (n.includes('noticia') || n.includes('news') || n.includes('globo') || n.includes('jornal')) return '📰';
+        if (n.includes('pluto')) return '🪐';
+        if (n.includes('aberta') || n.includes('variedade')) return '⭐';
+        return '📺';
+    }
+
+    return (
+        <div className="relative min-w-[250px] z-[100]" ref={dropdownRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${isOpen ? 'bg-emerald-500/10 border-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-[#1a1a20] border-white/10 text-gray-300 hover:bg-white/5 hover:border-white/20'}`}
+            >
+                <div className="flex items-center gap-2 font-bold truncate">
+                    <Filter size={16} className={isOpen ? 'text-emerald-500' : 'text-gray-500'} />
+                    <span>{selectedName}</span>
+                </div>
+                <ChevronDown size={16} className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-emerald-500' : 'text-gray-500'}`} />
+            </button>
+
+            {isOpen && (
+                <div className="absolute top-full left-0 right-0 mt-2 max-h-[400px] overflow-y-auto bg-[#0a0a0f] border-2 border-emerald-500/40 rounded-xl shadow-[0_25px_60px_rgba(0,0,0,1)] z-[100] ring-1 ring-white/10 scrollbar-thin scrollbar-thumb-emerald-500/50">
+                    <div
+                        onClick={() => { onChange('all'); setIsOpen(false); }}
+                        className={`px-4 py-4 cursor-pointer flex items-center gap-3 transition-colors ${selected === 'all' ? 'bg-emerald-500/20 text-emerald-400 font-bold' : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}
+                    >
+                        <Zap size={16} /> <span>Todas as Categorias</span>
+                    </div>
+                    <div className="h-px bg-white/10 my-1" />
+                    {categories.map(cat => (
+                        <div
+                            key={cat.category_id}
+                            onClick={() => { onChange(cat.category_id); setIsOpen(false); }}
+                            className={`px-4 py-3 cursor-pointer flex items-center gap-3 transition-colors border-l-2 ${selected === cat.category_id ? 'border-emerald-500 bg-white/5 text-white font-bold' : 'border-transparent text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                        >
+                            <span className="text-lg">{getIcon(cat.category_name)}</span>
+                            <span className="truncate">{cat.category_name}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const ChannelCard = ({ item, onClick, section }: { item: any, onClick: () => void, section: string }) => {
+    const isESPN = item.name?.toLowerCase().includes('espn');
+    const [imgError, setImgError] = useState(false);
+
+    const initials = (item.name || '')
+        .split(' ')
+        .filter((w: string) => w.length > 2)
+        .map((w: string) => w[0])
+        .join('')
+        .substring(0, 3)
+        .toUpperCase();
+
+    return (
+        <div
+            onClick={onClick}
+            className={`group relative aspect-video bg-[#0e0e12] rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 ${isESPN ? 'border-red-500/40 hover:border-red-500 hover:shadow-[0_0_25px_rgba(239,68,68,0.3)]' : 'border-white/5 hover:border-emerald-500 hover:shadow-[0_0_30px_rgba(16,185,129,0.2)]'}`}
+        >
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-black/40 to-black/80 z-0" />
+
+            <div className="absolute inset-0 flex items-center justify-center p-6 z-10 transition-all duration-500 group-hover:scale-90 group-hover:opacity-20">
+                {!imgError && item.stream_icon ? (
+                    <img
+                        src={getProxiedImage(item.stream_icon)}
+                        className="max-w-[60%] max-h-[60%] object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]"
+                        alt={item.name}
+                        onError={() => setImgError(true)}
+                    />
+                ) : (
+                    <div className="text-center">
+                        <div className="relative">
+                            <Tv size={56} className="text-emerald-500/10 mx-auto" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-sm font-black uppercase text-emerald-500/30">
+                                    {initials || (item.name || '').substring(0, 2).toUpperCase()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="absolute top-3 left-3 z-30 flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-sm group-hover:bg-emerald-500 group-hover:scale-110 transition-all shadow-xl">
+                <Play size={12} className="fill-emerald-500 text-emerald-500 group-hover:fill-black group-hover:text-black ml-0.5" />
+            </div>
+
+            <div className="absolute top-3 right-3 flex flex-col gap-1 items-end z-30">
+                {item.qualityLabel ? (
+                    <span className="text-[9px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-md shadow-lg border border-white/20">{item.qualityLabel}</span>
+                ) : item.variants?.[0]?.qualityLabel && (
+                    <span className="text-[9px] font-black bg-emerald-500 text-black px-2 py-0.5 rounded-md shadow-lg border border-white/20">{item.variants[0].qualityLabel}</span>
+                )}
+                {isESPN && <div className="p-1.5 bg-red-600 rounded-full animate-pulse shadow-lg shadow-red-500/50"><Activity size={10} className="text-white" /></div>}
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center px-4 z-40 pointer-events-none">
+                <div className="w-full text-center transform transition-all duration-500 group-hover:scale-110 translate-y-4 group-hover:translate-y-0">
+                    <div className="bg-black/40 backdrop-blur-md rounded-xl p-3 border border-white/5 opacity-80 group-hover:opacity-100 group-hover:bg-black/80 group-hover:border-emerald-500/30 group-hover:shadow-2xl transition-all max-w-[90%] mx-auto">
+                        <h4 className="text-[10px] group-hover:text-lg font-black text-gray-200 group-hover:text-white uppercase tracking-tight line-clamp-2 leading-tight transition-all duration-300 drop-shadow-lg">
+                            {item.groupName || item.name}
+                        </h4>
+                        <div className="h-0 group-hover:h-4 overflow-hidden transition-all duration-300">
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity delay-100">
+                                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-ping" />
+                                ASSISTIR AGORA
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="absolute inset-0 border-2 border-transparent group-hover:border-emerald-500/50 rounded-2xl transition-all duration-500 z-50 pointer-events-none" />
+        </div>
+    );
+};
 
 function TVPageContent() {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -162,7 +302,7 @@ function TVPageContent() {
     const [seasons, setSeasons] = useState<Season>({});
     const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
-    const [creds, setCreds] = useState({ host: 'http://2025easy.lat', user: 'Pauloroberto1', pass: '984223935' });
+    const [creds, setCreds] = useState({ host: 'http://7tvgols.link:80', user: '234567654', pass: '2345643' });
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -180,7 +320,7 @@ function TVPageContent() {
     const [history, setHistory] = useState<any[]>([]);
 
     useEffect(() => {
-        const h = localStorage.getItem('bunker_iptv_history');
+        const h = localStorage.getItem('acervo_iptv_history');
         if (h) setHistory(JSON.parse(h));
     }, []);
 
@@ -209,7 +349,27 @@ function TVPageContent() {
 
     // --- LOGIN CAROUSEL & DASHBOARD LOGIC ---
     useEffect(() => { const i = setInterval(() => setBgIndex(p => (p + 1) % WALLPAPERS.length), 8000); return () => clearInterval(i); }, []);
-    useEffect(() => { const s = localStorage.getItem('bunker_iptv_creds'); if (s) setCreds(JSON.parse(s)); }, []);
+    
+    useEffect(() => {
+        // Check for manual logout flag to prevent loops
+        const logoutFlag = localStorage.getItem('acervo_iptv_logout_flag');
+        if (logoutFlag) {
+            console.log("🚫 Manual logout detected. Skipping auto-login.");
+            localStorage.removeItem('acervo_iptv_logout_flag');
+            return;
+        }
+
+        const s = localStorage.getItem('acervo_iptv_creds');
+        if (s) {
+            try {
+                const parsed = JSON.parse(s);
+                setCreds(parsed);
+                setTimeout(() => handleLogin(parsed), 500);
+            } catch (e) {
+                localStorage.removeItem('acervo_iptv_creds');
+            }
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // --- AUTO-REFRESH WATCHDOG FIX ---
     useEffect(() => {
@@ -339,20 +499,75 @@ function TVPageContent() {
         setTimeout(() => { setUrl(cur); setFreezeCount(p => p + 1); }, 100);
     };
 
-    const handleLogin = async () => {
-        if (!creds.host || !creds.user || !creds.pass) return;
+    const tryNextAccount = async () => {
+        setIsLoading(true);
+        console.log("🔄 Iniciando Auto-Failover: Buscando conta alternativa...");
+        try {
+            const res = await fetch('/api/iptv/accounts');
+            const accounts = await res.json();
+
+            const currentHost = creds.host;
+            const alternatives = accounts.filter((acc: any) => acc.host !== currentHost || acc.user !== creds.user);
+
+            for (const acc of alternatives) {
+                console.log(`📡 Testando alternativa: ${acc.user} no host ${acc.host}`);
+                const worked = await handleLogin(acc, true);
+                if (worked) {
+                    console.log("✨ FAILOVER SUCESSO: Nova conta ativada.");
+                    return true;
+                }
+            }
+            alert("Nenhuma conta alternativa disponível no momento.");
+        } catch (e) {
+            console.error("Erro no failover:", e);
+        } finally {
+            setIsLoading(false);
+        }
+        return false;
+    };
+
+    const handleLogin = async (forceCreds?: any, silent = false) => {
+        const loginCreds = forceCreds || creds;
+        if (!loginCreds.host || !loginCreds.user || !loginCreds.pass) return;
+
         setIsLoading(true);
         try {
-            const baseUrl = creds.host.endsWith('/') ? creds.host.slice(0, -1) : creds.host;
-            const loginUrl = `${baseUrl}/player_api.php?username=${creds.user}&password=${creds.pass}`;
+            const baseUrl = loginCreds.host.endsWith('/') ? loginCreds.host.slice(0, -1) : loginCreds.host;
+            const loginUrl = `${baseUrl}/player_api.php?username=${loginCreds.user}&password=${loginCreds.pass}`;
+
+            console.log(`🔑 Tentando login para: ${loginCreds.user}`);
+
             const res = await fetch(`/api/iptv/proxy?url=${encodeURIComponent(loginUrl)}`);
             const data = await res.json();
+
             if (data.user_info?.auth === 1) {
+                console.log("✅ Login bem sucedido!");
                 setIsLoggedIn(true);
-                localStorage.setItem('bunker_iptv_creds', JSON.stringify(creds));
+                setCreds(loginCreds);
+                localStorage.setItem('acervo_iptv_creds', JSON.stringify(loginCreds));
                 setViewMode('dashboard');
-            } else { alert('Erro de Login'); }
-        } catch { alert('Erro de Conexão'); } finally { setIsLoading(false); }
+                return true;
+            } else {
+                console.error("❌ Erro de autenticação:", data);
+                if (!silent) {
+                    if (confirm('Erro de Login. Gostaria que o Acervo tentasse encontrar outra conta ativa automaticamente?')) {
+                        tryNextAccount();
+                    }
+                }
+                setIsLoggedIn(false);
+                return false;
+            }
+        } catch (err) {
+            console.error("🔥 Erro de conexão no login:", err);
+            if (!silent) {
+                if (confirm('Erro de Conexão. Gostaria de tentar o failover automático?')) {
+                    tryNextAccount();
+                }
+            }
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const loadSectionContent = async (section: 'live' | 'movies' | 'series' | 'free') => {
@@ -452,22 +667,14 @@ function TVPageContent() {
                 fullData: item
             };
 
-            // Backend Sync
+            // Progress saved locally (no external backend dependency)
             if (time > 30) {
-                fetch("/api/leisure/update_progress", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        item_id: String(newEntry.id),
-                        last_timestamp: time,
-                        total_duration: videoRef.current?.duration || 0
-                    })
-                }).catch(() => { });
+                // Could be extended with backend sync later
             }
 
             const filtered = prev.filter(p => p.id !== newEntry.id);
             const updated = [newEntry, ...filtered].slice(0, 10);
-            localStorage.setItem('bunker_iptv_history', JSON.stringify(updated));
+            localStorage.setItem('acervo_iptv_history', JSON.stringify(updated));
             return updated;
         });
     };
@@ -820,7 +1027,7 @@ function TVPageContent() {
                                     </button>
                                 )}
                                 <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 uppercase">
-                                    {viewMode === 'dashboard' ? 'BUNKER TV' : activeSection === 'live' ? 'TV AO VIVO' : activeSection === 'movies' ? 'FILMES' : activeSection === 'series' ? 'SÉRIES' : 'CANAIS ABERTOS'}
+                                    {viewMode === 'dashboard' ? 'ACERVO TV' : activeSection === 'live' ? 'TV AO VIVO' : activeSection === 'movies' ? 'FILMES' : activeSection === 'series' ? 'SÉRIES' : 'CANAIS ABERTOS'}
                                 </h1>
                             </div>
                         </div>
@@ -830,7 +1037,12 @@ function TVPageContent() {
                                 <User size={14} className="text-emerald-500" />
                                 <span className="text-xs font-bold text-gray-300">{creds.user}</span>
                             </div>
-                            <button onClick={() => { setIsLoggedIn(false); localStorage.removeItem('bunker_iptv_creds'); }} className="p-2 text-gray-400 hover:text-red-500 transition-colors"><LogOut size={18} /></button>
+                            <button onClick={() => {
+                                localStorage.removeItem('acervo_iptv_creds');
+                                localStorage.setItem('acervo_iptv_logout_flag', 'true');
+                                setIsLoggedIn(false);
+                                setUrl('');
+                            }} className="p-2 text-gray-400 hover:text-red-500 transition-colors"><LogOut size={18} /></button>
                         </div>
                     </header>
                     <div className="flex-1 overflow-y-auto p-8 scrollbar-thin scrollbar-thumb-emerald-500/30">
@@ -868,11 +1080,11 @@ function TVPageContent() {
                                     <header className="flex items-center justify-between mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
                                         <div>
                                             <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-2 flex items-center gap-3">
-                                                BUNKER <span className="text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-cyan-400">TV</span>
+                                                ACERVO <span className="text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-cyan-400">TV</span>
                                             </h1>
                                             <p className="text-white/40 font-medium text-sm md:text-base tracking-wide flex items-center gap-2">
                                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                SISTEMA DE ENTRETENIMENTO OPERACIONAL
+                                                ENTRETENIMENTO PREMIUM • TV, FILMES & SÉRIES
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-4">
@@ -880,7 +1092,12 @@ function TVPageContent() {
                                                 <span className="text-white font-bold text-sm">{creds.user}</span>
                                                 <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">Premium Access</span>
                                             </div>
-                                            <button onClick={() => { setIsLoggedIn(false); localStorage.removeItem('bunker_iptv_creds'); }} className="w-12 h-12 rounded-full bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/50 flex items-center justify-center text-white/70 hover:text-red-400 transition-all duration-300 group">
+                                            <button onClick={() => {
+                                                localStorage.removeItem('acervo_iptv_creds');
+                                                localStorage.setItem('acervo_iptv_logout_flag', 'true');
+                                                setIsLoggedIn(false);
+                                                setUrl('');
+                                            }} className="w-12 h-12 rounded-full bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/50 flex items-center justify-center text-white/70 hover:text-red-400 transition-all duration-300 group">
                                                 <LogOut size={20} className="group-hover:translate-x-0.5 transition-transform" />
                                             </button>
                                         </div>
@@ -1052,7 +1269,7 @@ function TVPageContent() {
                                                         <span className="text-gray-400">Gênero: {activeSection || 'Série'}</span>
                                                     </div>
                                                     <p className="text-gray-400 max-w-2xl leading-relaxed line-clamp-3">
-                                                        {selectedSeries.plot || 'Uma série épica disponível na Bunker TV. Selecione uma temporada abaixo para começar a assistir.'}
+                                                        {selectedSeries.plot || 'Uma série épica disponível na Acervo TV. Selecione uma temporada abaixo para começar a assistir.'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1167,7 +1384,7 @@ function TVPageContent() {
 
     return (
         <div className="flex h-screen w-full items-center justify-center relative bg-black overflow-hidden font-sans">
-            <PageNav title="Bunker TV" />
+            <PageNav title="Acervo TV" />
             {/* Dynamic Background */}
             <div className="absolute inset-0 z-0">
                 {WALLPAPERS.map((wall, idx) => (
@@ -1185,8 +1402,8 @@ function TVPageContent() {
                     <div className="w-16 h-16 bg-emerald-500 rounded-2xl mx-auto flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.4)] mb-4">
                         <Tv size={32} className="text-black fill-black" />
                     </div>
-                    <h1 className="text-3xl font-black text-white tracking-tight">BUNKER TV</h1>
-                    <p className="text-gray-400 text-sm font-medium mt-2">Acesso Restrito ao Sistema de IPTV</p>
+                    <h1 className="text-3xl font-black text-white tracking-tight">ACERVO TV</h1>
+                    <p className="text-gray-400 text-sm font-medium mt-2">Entretenimento Premium • TV, Filmes & Séries</p>
                 </div>
 
 
@@ -1229,7 +1446,7 @@ function TVPageContent() {
                     </div>
 
                     <button
-                        onClick={handleLogin}
+                        onClick={() => handleLogin()}
                         disabled={isLoading}
                         className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-4 rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                     >
@@ -1240,7 +1457,7 @@ function TVPageContent() {
             </div>
 
             <div className="absolute bottom-8 text-center w-full">
-                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">Bunker Operating System • v3.0</p>
+                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">Acervo Premium • v3.0</p>
             </div>
         </div>
     );
