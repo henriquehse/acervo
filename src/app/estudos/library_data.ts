@@ -110,21 +110,29 @@ export async function fetchTelegramBooks(): Promise<Book[]> {
 // Fetch DOWNLOADED audiobooks
 export async function fetchTelegramAudiobooks(): Promise<Audiobook[]> {
     try {
-        // Search for audiobooks via discovery
-        const response = await fetch(`${API_BASE}/api/telegram/discovery/quick-search?query=audiobook&limit=50`);
+        // Try the indexed streaming endpoint first (preferred)
+        const response = await fetch(`${API_BASE}/api/telegram/library/audiobooks-index`);
         const data = await response.json();
 
-        if (!data.success) {
-            console.warn('Failed to fetch audiobooks:', data);
-            return [];
+        if (data.success && data.audiobooks && data.audiobooks.length > 0) {
+            console.log(`🎧 Loaded ${data.total} audiobooks from index`);
+            return data.audiobooks;
         }
 
-        console.log(`🎧 Discovered ${data.total} audiobooks`);
-        return data.books || [];
+        // Fallback to quick search
+        const searchResponse = await fetch(`${API_BASE}/api/telegram/discovery/quick-search?query=audiobook&limit=50`);
+        const searchData = await searchResponse.json();
+
+        if (searchData.success) {
+            console.log(`🎧 Discovered ${searchData.total} audiobooks via search`);
+            return searchData.books || [];
+        }
+
+        return [];
     } catch (error) {
         console.error('Error fetching audiobooks:', error);
 
-        // Fallback
+        // Ultimate fallback
         try {
             const response = await fetch(`${API_BASE}/api/telegram/library/audiobooks`);
             const data = await response.json();
@@ -164,8 +172,13 @@ export function getBookUrl(book: Book): string {
 
 // Get file URL for audiobook
 export function getAudioUrl(audiobook: Audiobook): string {
-    if (audiobook.source === 'telegram' && audiobook.file_name) {
-        return `${API_BASE}/api/telegram/serve/${encodeURIComponent(audiobook.file_name)}`;
+    if (audiobook.source === 'telegram') {
+        if (audiobook.channel_id && audiobook.message_id) {
+            return `${API_BASE}/api/telegram/library/stream-audio/${audiobook.channel_id}/${audiobook.message_id}`;
+        }
+        if (audiobook.file_name) {
+            return `${API_BASE}/api/telegram/serve/${encodeURIComponent(audiobook.file_name)}`;
+        }
     }
     return '';
 }
