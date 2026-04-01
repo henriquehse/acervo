@@ -54,7 +54,7 @@ export interface Podcast {
 }
 
 // API base URL
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8100';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 // Fetch DOWNLOADED books
 export async function fetchTelegramBooks(): Promise<Book[]> {
@@ -157,7 +157,7 @@ export async function fetchTelegramCourses(): Promise<Course[]> {
 // Get file URL for book
 export function getBookUrl(book: Book): string {
     if (book.source === 'telegram' && book.file_name) {
-        return `${API_BASE}/api/telegram/library/serve/${encodeURIComponent(book.file_name)}`;
+        return `${API_BASE}/api/telegram/serve/${encodeURIComponent(book.file_name)}`;
     }
     return '/books/metamorphosis.epub';
 }
@@ -165,7 +165,7 @@ export function getBookUrl(book: Book): string {
 // Get file URL for audiobook
 export function getAudioUrl(audiobook: Audiobook): string {
     if (audiobook.source === 'telegram' && audiobook.file_name) {
-        return `${API_BASE}/api/telegram/library/serve/${encodeURIComponent(audiobook.file_name)}`;
+        return `${API_BASE}/api/telegram/serve/${encodeURIComponent(audiobook.file_name)}`;
     }
     return '';
 }

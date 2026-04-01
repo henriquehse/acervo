@@ -237,10 +237,9 @@ export const LibraryHub: React.FC<LibraryHubProps> = ({ localEbooks, cloudEbooks
                     { id: '3', title: 'A Única Coisa - Gary Keller', size_mb: 120 },
                     { id: '4', title: 'Essencialismo - Greg Mckeown', size_mb: 110 }
                 ]);
-                setIsLoadingAudiobooks(false);
             }, 1000);
         } finally {
-            // Loading handled in mock catch for better UX simulation
+            setIsLoadingAudiobooks(false);
         }
     };
 

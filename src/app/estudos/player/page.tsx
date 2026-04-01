@@ -12,14 +12,14 @@ import {
     Flame, SkipBack, SkipForward, Settings, Camera,
     Repeat, Zap, Brain, LayoutTemplate, MessageSquare,
     PanelRightClose, PanelRightOpen, Download, Share2,
-    PictureInPicture2, HelpCircle, Keyboard, FileText, Copy, PlayCircle, ExternalLink, Hourglass, Sparkles
+    PictureInPicture2, HelpCircle, Keyboard, FileText, Copy, PlayCircle, ExternalLink, Hourglass, Sparkles, Headphones
 } from 'lucide-react';
 import { Suspense } from 'react';
 import mammoth from 'mammoth';
 import JSZip from 'jszip';
 import { Folder, File as FileIcon } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 // --- TYPES ---
 interface Video {
@@ -27,7 +27,9 @@ interface Video {
     path: string;
     duration?: number;
     watched?: boolean;
-    file_type?: 'video' | 'document';
+    file_type?: string;
+    type?: string;
+    size?: number;
 }
 
 interface Module {
@@ -1230,7 +1232,7 @@ function PlayerContent() {
         if (!currentVideo) return;
         setIsGeneratingAI(true);
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
             const response = await fetch(`${apiUrl}/api/ai/summarize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1354,7 +1356,56 @@ function PlayerContent() {
                                 const isTXT = fileName.endsWith('.txt');
                                 const isDOCX = fileName.endsWith('.docx') || fileName.endsWith('.doc');
                                 const isZIP = fileName.endsWith('.zip') || fileName.endsWith('.rar') || fileName.endsWith('.7z');
+                                const isAudio = fileName.endsWith('.mp3') || fileName.endsWith('.m4a') || fileName.endsWith('.wav') || fileName.endsWith('.aac') || fileName.endsWith('.flac') || currentVideo?.type === 'audio';
                                 const isDocument = isPDF || isTXT || isDOCX || isZIP;
+
+                                if (isAudio) {
+                                    return (
+                                        <div className="w-full h-full bg-[#030303] flex flex-col items-center justify-center relative overflow-hidden">
+                                            {/* Audio Visualizer Mock */}
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                                                <div className="flex gap-1 items-end h-32">
+                                                    {[...Array(20)].map((_, i) => (
+                                                        <motion.div
+                                                            key={i}
+                                                            animate={{ height: isPlaying ? [10, 80 * Math.random(), 40, 100 * Math.random(), 20] : 10 }}
+                                                            transition={{ duration: 1, repeat: Infinity, delay: i * 0.05 }}
+                                                            className="w-2 bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-full"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="z-10 flex flex-col items-center gap-6">
+                                                <div className="w-48 h-48 bg-gradient-to-br from-purple-900/40 to-black rounded-[40px] flex items-center justify-center border border-white/10 shadow-2xl relative group">
+                                                    <Headphones size={80} className={`text-purple-500 transition-all duration-700 ${isPlaying ? 'scale-110 blur-[1px]' : ''}`} />
+                                                    {isPlaying && (
+                                                        <motion.div 
+                                                            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
+                                                            transition={{ duration: 2, repeat: Infinity }}
+                                                            className="absolute inset-0 bg-purple-500 rounded-[40px]"
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="text-center px-8">
+                                                    <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter mb-2 line-clamp-2">{currentVideo?.name}</h3>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span className="px-2 py-0.5 bg-purple-600/20 text-purple-400 text-[10px] font-black rounded uppercase tracking-widest border border-purple-500/20">Audio Mode</span>
+                                                        <span className="text-white/20 text-xs font-bold">{currentVideo?.size ? `${(currentVideo.size / 1024 / 1024).toFixed(1)} MB` : ''}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <video
+                                                ref={videoRef}
+                                                src={streamUrl}
+                                                crossOrigin="anonymous"
+                                                className="absolute bottom-0 left-0 w-0 h-0 invisible pointer-events-none"
+                                                onEnded={handleVideoEnd}
+                                            />
+                                        </div>
+                                    );
+                                }
 
                                 if (isDocument) {
                                     return (

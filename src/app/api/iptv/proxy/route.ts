@@ -29,6 +29,9 @@ function isUrlSafe(url: string): boolean {
     }
 }
 
+// Use Node.js runtime for large file support and standard fetch behavior
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const targetUrl = searchParams.get('url');
@@ -44,24 +47,42 @@ export async function GET(request: NextRequest) {
     try {
         const response = await fetch(targetUrl, {
             headers: {
-                'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+                'User-Agent': 'IPTVSmartersPlayer',
                 'Accept': '*/*',
+                'Connection': 'keep-alive'
             },
             redirect: 'follow',
         });
 
         const contentType = response.headers.get('content-type') || '';
+        const corsHeaders = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        };
 
-        if (contentType.includes('application/json')) {
-            const data = await response.json();
-            return NextResponse.json(data);
+        if (contentType.includes('application/json') || contentType.includes('application/octet-stream')) {
+            try {
+                const data = await response.json();
+                return NextResponse.json(data, { headers: corsHeaders });
+            } catch {
+                // If JSON parsing fails, fall back to text
+                const text = await response.text();
+                return new Response(text, {
+                    status: 200,
+                    headers: {
+                        ...corsHeaders,
+                        'Content-Type': contentType || 'text/plain',
+                    },
+                });
+            }
         } else {
             const text = await response.text();
-            return new NextResponse(text, {
+            return new Response(text, {
                 status: 200,
                 headers: {
+                    ...corsHeaders,
                     'Content-Type': contentType || 'text/plain',
-                    'Access-Control-Allow-Origin': '*'
                 },
             });
         }

@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -31,13 +31,13 @@ export async function GET(request: NextRequest) {
         let currentUrl = targetUrl;
         let finalResponse: Response | null = null;
         let redirectCount = 0;
-        const maxRedirects = 5;
+        const maxRedirects = 10;
 
         // Manual redirect handling to ensure headers like Range and User-Agent are preserved
         while (redirectCount < maxRedirects) {
             const parsedUrl = new URL(currentUrl);
             const headers: Record<string, string> = {
-                'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+                'User-Agent': 'IPTVSmartersPlayer',
                 'Accept': '*/*',
                 'Connection': 'keep-alive',
                 'Referer': `${parsedUrl.protocol}//${parsedUrl.host}/`,
@@ -101,33 +101,25 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // --- CASE 2: VOD / Streaming Content ---
+        // --- CASE 2: VOD / Streaming Content (Binary) ---
+        // Proxying binary data directly to maintain User-Agent (crucial for IPTV servers)
         const responseHeaders = new Headers();
-
-        // Essential streaming headers to copy back to the client
-        const headersToCopy = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control', 'last-modified', 'etag'];
+        const headersToCopy = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control'];
         headersToCopy.forEach(h => {
             const val = finalResponse?.headers.get(h);
             if (val) responseHeaders.set(h, val);
         });
 
         responseHeaders.set('Access-Control-Allow-Origin', '*');
-        responseHeaders.set('Access-Control-Allow-Headers', '*');
+        responseHeaders.set('Cache-Control', 'public, max-age=3600'); 
 
-        // Ensure seekability
-        if (!responseHeaders.has('accept-ranges')) {
-            responseHeaders.set('accept-ranges', 'bytes');
-        }
-
-        // Return the response body stream
         return new Response(finalResponse.body, {
             status: finalResponse.status,
-            statusText: finalResponse.statusText,
             headers: responseHeaders,
         });
 
     } catch (error) {
         console.error('IPTV Stream Proxy Error:', error);
-        return Response.redirect(targetUrl, 302);
+        return NextResponse.redirect(targetUrl, { status: 302 });
     }
 }

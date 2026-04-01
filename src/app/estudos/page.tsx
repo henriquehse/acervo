@@ -17,7 +17,7 @@ import { LibraryHub } from './components/LibraryHub';
 import { YouTubeTab } from './components/YouTubeCarousel';
 
 // API Base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 // Hot Area Icons & Colors (Updated for Dark Mode Contrast)
 const HOT_AREA_CONFIG: Record<string, { icon: any; color: string; label: string }> = {

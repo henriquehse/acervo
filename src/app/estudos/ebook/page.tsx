@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 // API Base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 // STORAGE KEY FOR READING PROGRESS
 const READING_PROGRESS_KEY = 'bunker_reading_progress';

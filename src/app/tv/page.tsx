@@ -302,7 +302,7 @@ function TVPageContent() {
     const [seasons, setSeasons] = useState<Season>({});
     const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
-    const [creds, setCreds] = useState({ host: 'http://7tvgols.link:80', user: '234567654', pass: '2345643' });
+    const [creds, setCreds] = useState({ host: 'http://vellaris.top', user: '281318341', pass: '378355648' });
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);

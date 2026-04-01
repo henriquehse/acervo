@@ -25,7 +25,7 @@ interface ActivityTemplate {
 }
 
 // === API BASE URL ===
-const API_BASE = '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
 interface RoutineItem {
     id: number;

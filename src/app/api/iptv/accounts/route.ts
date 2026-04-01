@@ -20,33 +20,21 @@ interface IPTVAccount {
 // --- EMBEDDED VAULT (from Bunker's iptv_vault.json + iptv_top.json) ---
 // These are the verified, high-priority accounts
 const PREMIUM_ACCOUNTS = [
+    { h: "http://vellaris.top", u: "281318341", p: "378355648", exp: "1818298799" },
     { h: "http://7tvgols.link:80", u: "234567654", p: "2345643", exp: "1801688760" },
     { h: "http://7tvgols.link:80", u: "9882848144", p: "988284Bagtts", exp: "1782529199" },
     { h: "http://7tvgols.link:80", u: "34545yu", p: "5656756", exp: "1781203020" },
     { h: "http://7tvgols.link:80", u: "556293614871", p: "766789067", exp: "1778881680" },
-    { h: "http://7tvgols.link:80", u: "Denisesalvador", p: "cixn58", exp: "1778468399" },
 ];
 
 const VAULT_ACCOUNTS = [
+    { host: "http://vellaris.top", user: "281318341", pass: "378355648", exp: "1818298799" },
+    { host: "http://cazuza.cc", user: "Aquiles2", pass: "Aq96788998", exp: "1777345199" },
+    { host: "http://rede.tvno.site", user: "heitorteste2", pass: "Ht9910621212", exp: "1774569599" },
     { host: "http://7tvgols.link:80", user: "234567654", pass: "2345643", exp: "1801688760" },
-    { host: "http://7tvgols.link:80", user: "34545yu", pass: "5656756", exp: "1781203020" },
     { host: "http://dnscine.top:80", user: "229752473", pass: "816597864", exp: "1789181999" },
-    { host: "http://dnscine.top:80", user: "239874878", pass: "898749796", exp: "1785725999" },
-    { host: "http://dnscine.top:80", user: "151998523", pass: "414726440", exp: "1781492399" },
-    { host: "http://dnscine.top:80", user: "144834635", pass: "883976291", exp: "1776653999" },
     { host: "http://bigcrytop.com:80", user: "RuiBatistaFN12", pass: "KJitpcsMp7", exp: "1780422558" },
     { host: "http://gsatvclb.com:80", user: "mwgeG5PuG", pass: "tuU61S", exp: "1780714799" },
-    { host: "http://gsatvclb.com:80", user: "7Bp2pG", pass: "wW52Me", exp: "1776567599" },
-    { host: "http://rede.tvno.site", user: "gustavo41pai2", pass: "P9352i", exp: "1787615999" },
-    { host: "http://serie.crepusculo.shop", user: "11963631552", pass: "anderson0102", exp: "1776383999" },
-    { host: "http://serie.crepusculo.shop", user: "860860", pass: "860860", exp: "1775862508" },
-    { host: "http://cazuza.cc", user: "Ad234ugg", pass: "Ad5489763y", exp: "1776049199" },
-    { host: "http://cazuza.cc", user: "Aquiles2", pass: "Aq96788998", exp: "1777345199" },
-    { host: "http://cazuza.cc", user: "FranciscoJesuus", pass: "8KFjb6", exp: "1775185199" },
-    { host: "http://cazuza.cc", user: "Xjq726PXm75jX", pass: "Ry83776uY38", exp: "1775357999" },
-    { host: "http://flowclb.net", user: "Aquiles2", pass: "Aq96788998", exp: "1777345199" },
-    { host: "http://flowclb.net", user: "Ad234ugg", pass: "Ad5489763y", exp: "1776049199" },
-    { host: "http://rede.tvno.site", user: "lucandfd", pass: "la8059290", exp: "1776470399" },
 ];
 
 function formatExpiry(expTs: number): string {
